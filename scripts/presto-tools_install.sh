@@ -1,0 +1,74 @@
+#!/bin/env bash
+
+
+#  __/\\\\\\\\\\\\\______/\\\\\\\\\______/\\\\\\\\\\\\\\\_____/\\\\\\\\\\\____/\\\\\\\\\\\\\\\_______/\\\\\______        
+#   _\/\\\/////////\\\__/\\\///////\\\___\/\\\///////////____/\\\/////////\\\_\///////\\\/////______/\\\///\\\____       
+#    _\/\\\_______\/\\\_\/\\\_____\/\\\___\/\\\______________\//\\\______\///________\/\\\_________/\\\/__\///\\\__      
+#     _\/\\\\\\\\\\\\\/__\/\\\\\\\\\\\/____\/\\\\\\\\\\\_______\////\\\_______________\/\\\________/\\\______\//\\\_     
+#      _\/\\\/////////____\/\\\//////\\\____\/\\\///////___________\////\\\____________\/\\\_______\/\\\_______\/\\\_    
+#       _\/\\\_____________\/\\\____\//\\\___\/\\\_____________________\////\\\_________\/\\\_______\//\\\______/\\\__   
+#        _\/\\\_____________\/\\\_____\//\\\__\/\\\______________/\\\______\//\\\________\/\\\________\///\\\__/\\\____  
+#         _\/\\\_____________\/\\\______\//\\\_\/\\\\\\\\\\\\\\\_\///\\\\\\\\\\\/_________\/\\\__________\///\\\\\/_____ 
+#          _\///______________\///________\///__\///////////////____\///////////___________\///_____________\/////_______
+
+#######################################################  TOOLS  #########################################################
+#-------------------------------------------------------------------------------------------------
+# Welcome to the presto TOOLS INSTALL SCRIPT
+#
+# -presto-tools_install .sh  (The actual install script for this kit )
+# -presto_bashwelcome.sh    (Gives you nice info on your pi' running state)
+# -presto_update_full.py >
+# 		    automatical one shot updates your whole docker-stacked system with 
+# 			image cleanup at the end for a clean, space saving, smooth docker experience , ie. can be used 
+# 			with a cron job ,for example to execute it every week and update the containers and prune the left
+# 			over images? (see below for instructions )
+#  			to use run:  sudo ./presto-tools_install.sh
+
+#--------------------------------------------------------------------------------------------------
+# author		: piklz
+# github		: https://github.com/piklz/presto-tools.git
+# web		    : https://github.com/piklz/presto-tools.git
+#
+#########################################################################################################################
+
+#install tools script
+#presto toolkit xtras for future use
+ 
+#first check if login bash mod is setup already
+
+do_install_prestobashwelcome() {
+if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
+    # code if found
+	echo "Found presto Welcome login link in bashrc no changes needed -continue check if prestotools git installed.."
+
+else
+    # add code if not found
+  echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
+	echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
+
+
+	#bashwelcome add to bash.rc here
+	echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
+	echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
+fi 
+
+#lets check if there already / git clone it and run it
+if [ ! -d ~/presto-tools ]; then
+  echo "GIT cloning the presto-tools now:\n"
+	git clone https://github.com/piklz/presto-tools ~/presto-tools
+	chmod +x ~/presto-tools/scripts/presto-tools_install.sh
+  echo "running presto-tools install..>:\n"
+	pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
+	popd
+else
+	echo "presto-tools scripts dir already installed - continue"
+fi
+  
+  #all done done 
+  echo -e "${COL_LIGHT_RED}${INFO}${clear}files added from git or bash links modded.(bash.rc)\n "
+	echo -e "${COL_LIGHT_RED}${INFO}${clear}${COL_LIGHT_GREEN}prestos WELCOME BASH created! Logout and re-login to test  \n"
+
+  source ~/.bashrc
+  
+}
+do_install_prestobashwelcome

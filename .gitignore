@@ -1,0 +1,15 @@
+# C extensions
+*.so
+*.old
+*.swp
+
+# Distribution / packaging
+.Python
+build/
+
+#my stuff
+.bashrc
+.bash_history
+#.bash_aliases
+README.md
+puma_monitor
