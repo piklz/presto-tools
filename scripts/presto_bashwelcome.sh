@@ -1,6 +1,5 @@
 #!/bin/env bash
 
-
 #  __/\\\\\\\\\\\\\______/\\\\\\\\\______/\\\\\\\\\\\\\\\_____/\\\\\\\\\\\____/\\\\\\\\\\\\\\\_______/\\\\\______        
 #   _\/\\\/////////\\\__/\\\///////\\\___\/\\\///////////____/\\\/////////\\\_\///////\\\/////______/\\\///\\\____       
 #    _\/\\\_______\/\\\_\/\\\_____\/\\\___\/\\\______________\//\\\______\///________\/\\\_________/\\\/__\///\\\__      
@@ -18,19 +17,18 @@
 # -presto-tools_install .sh  (The actual install script for this kit )
 # -presto_bashwelcome.sh    (Gives you nice info on your pi' running state)
 # -presto_update_full.py >
-# 		    automatical one shot updates your whole docker-stacked system with 
-# 			image cleanup at the end for a clean, space saving, smooth docker experience , ie. can be used 
-# 			with a cron job ,for example to execute it every week and update the containers and prune the left
-# 			over images? (see below for instructions )
-#  			to use run:  sudo ./presto-tools_install.sh
-
+# 		      automatical one shot updates your whole docker-stacked system with 
+# 		  	  image cleanup at the end for a clean, space saving, smooth docker experience , ie. can be used 
+# 		  	  with a cron job ,for example to execute it every week and update the containers and prune the left
+# 		  	  over images? (see below for instructions )
+#  		  	  to use run:  sudo ./presto-tools_install.sh
+#
 #--------------------------------------------------------------------------------------------------
-# author		: piklz
-# github		: https://github.com/piklz/presto-tools.git
-# web		    : https://github.com/piklz/presto-tools.git
+# author        : piklz
+# github        : https://github.com/piklz/presto-tools.git
+# web           : https://github.com/piklz/presto-tools.git
 #
 #########################################################################################################################
-
 
 sleep 0
 

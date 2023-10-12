@@ -22,9 +22,9 @@
 # 			with a cron job ,for example to execute it every week and update the containers and prune the left
 # 			over images? (see below for instructions )
 #  			to use run:  sudo ./presto-tools_install.sh
-
+#
 #--------------------------------------------------------------------------------------------------
-# author		: piklz
+# author        : piklz
 # github		: https://github.com/piklz/presto-tools.git
 # web		    : https://github.com/piklz/presto-tools.git
 #
