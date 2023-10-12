@@ -33,7 +33,11 @@
 
 #install tools script
 #presto toolkit xtras for future use
- 
+
+set -e
+# Append common folders to the PATH to ensure that all basic commands are available.
+export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+
 #first check if login bash mod is setup already
 
 do_install_prestobashwelcome() {
