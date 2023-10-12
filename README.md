@@ -26,7 +26,11 @@
 
 
 ## Quick Start
+- Automatic one click Way:
+<pre><code>curl -sSL  https://raw.githubusercontent.com/piklz/presto-tools/main/scripts/presto-tools_install.sh | bash </code></pre>
+ ( if you prefer to see whats happening try the manual ways below)
 
+- MANUAL Way
 - install git using a command: 
 <pre><code>sudo apt-get install git</code></pre>
 
