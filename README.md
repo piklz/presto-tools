@@ -14,7 +14,7 @@
 ### Some scripts to help make your presto|raspberry pi experience better!
 
  - `presto-tools_install .sh` 
-        (The actual install srcipt for this kit ) 
+        (The actual install script for this kit ) 
  - `presto_bashwelcome.sh` 
         (Gives you nice info on your pi' running state)
  - `presto_update_full.py`  
@@ -41,7 +41,7 @@
 
 <pre><code>cd ~/presto-tools/</code></pre>
 -  and run:
-<pre><code>./scripts/./presto-tools_install.sh</code></pre>
+<pre><code>./scripts/presto-tools_install.sh</code></pre>
 
 
 
