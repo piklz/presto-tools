@@ -43,7 +43,9 @@ export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 git_pull(){
 
 	echo -e "GIT cloning the presto-tools now:\n"
-	git clone https://github.com/piklz/presto-tools ~/presto-tools
+	#TEST develop
+	git clone -b develop https://github.com/piklz/presto-tools ~/presto-tools
+	#git clone https://github.com/piklz/presto-tools ~/presto-tools
 	#since we installed presto lets link to bashwelcome in bashrc
     do_install_prestobashwelcome
 
