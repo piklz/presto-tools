@@ -82,12 +82,12 @@ do_install_prestobashwelcome() {
 
 	if [ ! -d ~/presto-tools ]; then 
        
-	    if [! is_installed git];then
+	    if  is_installed git ; then
 			sudo apt install git 
 		else
-
-		git_pull
+			git_pull
 		fi
+
 	else 
 		echo -e "presto-tools folder already exists no need to clone"
 		do_install_prestobashwelcome
