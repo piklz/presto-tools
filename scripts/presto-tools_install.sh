@@ -112,7 +112,7 @@ do_install_prestobashwelcome() {
 
 		else
 
- 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
+ 			echo -e "${INFO} ${COL_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
             
 			
 			git_pull_update
