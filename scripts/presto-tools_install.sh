@@ -44,7 +44,7 @@ git_pull(){
 
 	echo -e "GIT cloning the presto-tools now:\n"
 	git clone https://github.com/piklz/presto-tools ~/presto-tools
-	#since we insatlled presto lets link to bashwelcome in bashrc
+	#since we installed presto lets link to bashwelcome in bashrc
     do_install_prestobashwelcome
 
 }
@@ -73,6 +73,7 @@ do_install_prestobashwelcome() {
 
 	else 
 		echo -e "presto-tools folder already exists no need to clone"
-
+		echo -e "lest check for updates"
+		git fetch
 
 	fi
