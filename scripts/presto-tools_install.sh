@@ -80,32 +80,28 @@ if [ ! -d ~/presto-tools ]; then
         pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
         popd
 else
-        echo "presto-tools scripts dir already installed - continue LETS CHECK FOR UPDATES instead"
-        git fetch
-        echo "GIT FETCHING  for updates now " 
+	
+   echo "presto-tools scripts dir already installed - continue LETS CHECK FOR UPDATES instead"
+   git fetch
+   echo "GIT FETCHING  for updates now " 
 
-        if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
+   if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
 
-        #delete .outofdate if it does exist
-        [ -f .outofdate ] && rm .outofdate      
-        echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
+   #delete .outofdate if it does exist
+   [ -f .outofdate ] && rm .outofdate      
+   echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
 
-        else
+   else
 
-            echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
+      echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
 
-            if [ ! -f .outofdate ]; then
-                whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
-                   touch .outofdate
-            fi
+      if [ ! -f .outofdate ]; then
+         whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
+           touch .outofdate
+      fi
         do_update
-        fi
+   fi
 fi
-
-
-
-
-
 
 
 
