@@ -61,7 +61,7 @@ COL_ITALIC="\e[1;3m"
 
 
 git_pull_update(){
-
+    pushd ~/presto-tools
 	git pull origin develop
 }
 
