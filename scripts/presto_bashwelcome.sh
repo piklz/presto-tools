@@ -252,7 +252,7 @@ trap '{ echo -e "${red}Error: $?" >&2; }' ERR
 
 # Print the rest of the Raspberry Pi info
 echo -e " ${white}  ${calendar} Date and Time: ${date}"
-echo -e " ${blue}  ${os} Operating System: ${os}"
+echo -e " ${blue}  Operating System: ${os}"
 echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col}$((cpu_temp/1000))°C"
 echo -e " ${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
 echo -e " ${red}  ${house}   Internal IP: ${internal_ip}"
