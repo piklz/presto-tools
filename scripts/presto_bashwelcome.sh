@@ -128,9 +128,9 @@ is_command() {
 check_git() {
 
   
-  git -C ~/presto-tools/ fetch
+  
 
-  if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
+  if [ $(git -C ~/presto-tools/ status | grep -c "Your branch is up to date") -eq 1 ]; then
 
     #delete .outofdate if it does exist
     [ -f .outofdate ] && rm .outofdate	
