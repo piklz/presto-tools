@@ -79,5 +79,20 @@ do_install_prestobashwelcome() {
 		do_install_prestobashwelcome
 		echo -e "lets check for updates"
 		git fetch
+		if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
+
+			#delete .outofdate if it does exist
+			[ -f .outofdate ] && rm .outofdate	
+			echo -e "${INFO} ${COL_LIGHT_GREEN}    PUMA Git local/repo is up-to-date${clear}"
+
+		else
+
+ 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PUMA update is available${COL_LIGHT_GREEN} ✓${clear}"
+
+		if [ ! -f .outofdate ]; then
+			whiptail --title "Project update" --msgbox "PUMA update is available \nYou will not be reminded again until your next update" 8 78
+			touch .outofdate
+		fi
+fi
 
 	fi
