@@ -36,43 +36,33 @@ sleep 0
 
 echo
 
-for y in $(seq 0 13); do
-  printf %s '           '
-  for color in 7 3 6 2 5 1 4; do
+for y in $(seq 0 10); do
+  printf %s '  '
+  for color in 7 3 6 2 5 1 4 ; do
     tput setab ${color}
-    printf %s '        '
+    printf %s '       '
   done
   tput sgr0
   echo
 done
 
 for y in 0 1; do
-  printf %s '           '
-  for color in 4 0 5 0 6 0 7; do
+  printf %s '  '
+  for color in 4 0 5 0 6 0 7 ; do
     tput setab ${color}
-    printf %s '        '
+    printf %s '       '
   done
   tput sgr0
   echo
 done
-<<'###BLOCK-COMMENT'
-for y in $(seq 0 4); do
-  printf %s '           '
-  for color in 4 4 4 4 4 7 7 7 7 7 5 5 5 5 5 0 0 0 0 0 0 0 0 0 0 0 0 0; do
-    tput setab ${color}
-    printf %s '  '
-  done
-  tput sgr0
-  echo
-done
-###BLOCK-COMMENT
 
-echo
 
-#---->
+
+
 # Set these values so the installer can still run in color; use: ${COL_...}
 COL_NC='\e[0m' # No Color
 COL_LIGHT_GREEN='\e[1;32m'
+COL_GREEN='\e[0;32m'
 COL_LIGHT_RED='\e[1;31m'
 TICK="[${COL_LIGHT_GREEN}✓${COL_NC}]"
 CROSS="[${COL_LIGHT_RED}✗${COL_NC}]"
@@ -90,18 +80,18 @@ COL_ITALIC="\e[1;3m"
 
 
 
-echo -e "${COL_LIGHT_GREEN}
-${COL_LIGHT_GREEN}  ██████╗ ██████╗ ███████╗███████╗████████╗ ██████╗ 
-${COL_LIGHT_GREEN}  ██╔══██╗██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔═══██╗
-${COL_LIGHT_GREEN}  ██████╔╝██████╔╝█████╗  ███████╗   ██║   ██║   ██║
-${COL_LIGHT_GREEN}  ██╔═══╝ ██╔══██╗██╔══╝  ╚════██║   ██║   ██║   ██║
-${COL_LIGHT_GREEN}  ██║     ██║  ██║███████╗███████║   ██║   ╚██████╔╝
-${COL_LIGHT_GREEN}  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝    ╚═════╝ "
+echo -e "${COL_GREEN}
+${COL_GREEN}  ██████╗ ██████╗ ███████╗███████╗████████╗ ██████╗
+${COL_GREEN}  ██╔══██╗██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔═══██╗
+${COL_GREEN}  ██████╔╝██████╔╝█████╗  ███████╗   ██║   ██║   ██║
+${COL_GREEN}  ██╔═══╝ ██╔══██╗██╔══╝  ╚════██║   ██║   ██║   ██║
+${COL_GREEN}  ██║     ██║  ██║███████╗███████║   ██║   ╚██████╔╝
+${COL_GREEN}  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝    ╚═════╝ "
 
 #echo -e "\n"
 #echo -e "${COL_ITALIC}${COL_LIGHT_GREEN}HI ${COL_NC}\n"
 sleep 1
-echo -e "${COL_LIGHT_CYAN}I'm presto (Presto's Unattended Media Aggregator )${COL_NC}\n "
+echo -e "${COL_LIGHT_CYAN}I'm presto (Perfectly Rationalized Engine for Superior Tidiness and Organization )${COL_NC}\n "
 
 #======================================================================================================================
 
@@ -213,10 +203,9 @@ docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6
 if is_command docker; then
     #echo -e "\n"
 echo -e "${COL_LIGHT_CYAN}
-
-  ╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
-   ║║║ ║║  ╠╩╗║╣ ╠╦╝
-  ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2
+             ╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
+              ║║║ ║║  ╠╩╗║╣ ╠╦╝
+             ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2
 
 "
     #docker system df
