@@ -62,7 +62,8 @@ COL_ITALIC="\e[1;3m"
 
 git_pull_update(){
 	
-	git pull origin develop
+	#git pull origin develop
+	git pull origin main
 }
 
 
@@ -70,7 +71,7 @@ git_pull_clone(){
 
 	echo -e "GIT cloning the presto-tools now:\n"
 	#TEST develop
-	git clone -b develop https://github.com/piklz/presto-tools ~/presto-tools
+	git clone -b main https://github.com/piklz/presto-tools ~/presto-tools
 	#git clone https://github.com/piklz/presto-tools ~/presto-tools
 	#since we installed presto lets link to bashwelcome in bashrc
     do_install_prestobashwelcome
@@ -111,7 +112,7 @@ do_install_prestobashwelcome() {
 
 		else
 
- 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
+ 			echo -e "${INFO} ${COL_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
             
 			
 			git_pull_update
