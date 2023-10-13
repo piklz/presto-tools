@@ -102,16 +102,15 @@ fi
 
   source ~/.bashrc
   
-}
+
 
 # github update from main func
 do_update() {
 
-
-        echo "Pulling latest project file from Github.com ---------------------------------------------"
-        git pull origin main
-        echo "git status ------------------------------------------------------------------------------"
-        git status
+	echo "Pulling latest project file from Github.com ---------------------------------------------"
+	git pull origin main
+	echo "git status ------------------------------------------------------------------------------"
+	git status
 
 }
 do_install_prestobashwelcome
