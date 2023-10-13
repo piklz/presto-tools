@@ -110,13 +110,12 @@ do_install_prestobashwelcome() {
 
 
   
-  #all done done 
-  echo -e "${COL_LIGHT_RED}${INFO}${clear}files added from git or bash links modded.(bash.rc)\n "
-  echo -e "${COL_LIGHT_RED}${INFO}${clear}${COL_LIGHT_GREEN}prestos WELCOME BASH created! Logout and re-login to test  \n"
+	#all done done 
+	echo -e "${COL_LIGHT_RED}${INFO}${clear}files added from git or bash links modded.(bash.rc)\n "
+	echo -e "${COL_LIGHT_RED}${INFO}${clear}${COL_LIGHT_GREEN}prestos WELCOME BASH created! Logout and re-login to test  \n"
 
-  source ~/.bashrc
+	source ~/.bashrc
   
 
 }
 do_install_prestobashwelcome
-
