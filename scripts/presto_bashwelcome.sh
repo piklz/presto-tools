@@ -125,6 +125,24 @@ is_command() {
 }
 
 
+check_git(){
+
+    git fetch 
+    
+		if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
+
+			#delete .outofdate if it does exist
+			[ -f .outofdate ] && rm .outofdate	
+			#echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
+
+		else
+
+ 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available run the install to update ${COL_LIGHT_GREEN} ✓${clear}"
+}
+
+
+
+
 
 <<'###BLOCK-COMMENT'
 
@@ -198,20 +216,7 @@ icon_graphics=(
 )
 
 
-check_git(){
 
-    git fetch 
-		if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
-
-			#delete .outofdate if it does exist
-			[ -f .outofdate ] && rm .outofdate	
-			#echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
-
-		else
-
- 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available run the install to update ${COL_LIGHT_GREEN} ✓${clear}"
-            
-}
 
 #is docker is installed? show user their containers active status
 if is_command docker; then
