@@ -59,7 +59,7 @@ do_install_prestobashwelcome() {
 
 	else
 		# add code if not found
-	echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
+		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
 		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
 
 
@@ -91,9 +91,9 @@ do_install_prestobashwelcome() {
 
 			if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
 
-			#delete .outofdate if it does exist
-			[ -f .outofdate ] && rm .outofdate      
-			echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
+				#delete .outofdate if it does exist
+				[ -f .outofdate ] && rm .outofdate      
+				echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
 
 			else
 
