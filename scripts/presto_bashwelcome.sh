@@ -125,24 +125,6 @@ is_command() {
 }
 
 
-check_git() {
-
-  
-  
-
-  if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
-
-    #delete .outofdate if it does exist
-    [ -f .outofdate ] && rm .outofdate	
-    #echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
-
-  else
-
-    echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available! run the install again to update ${COL_LIGHT_GREEN} ✓${clear}"
-  fi
-}
-
-
 
 
 
@@ -292,7 +274,7 @@ else
 fi
 
 
-check_git
+
 
 # Trap errors again so that the script can exit gracefully even if the trap handler fails
 trap - ERR
