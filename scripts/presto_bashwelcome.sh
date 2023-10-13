@@ -137,7 +137,7 @@ check_git() {
 
   else
 
-    echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available run the install to update ${COL_LIGHT_GREEN} ✓${clear}"
+    echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available! run the install again to update ${COL_LIGHT_GREEN} ✓${clear}"
   fi
 }
 
