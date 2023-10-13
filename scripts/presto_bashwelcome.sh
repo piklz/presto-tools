@@ -36,43 +36,33 @@ sleep 0
 
 echo
 
-for y in $(seq 0 13); do
-  printf %s '           '
-  for color in 7 3 6 2 5 1 4; do
+for y in $(seq 0 10); do
+  printf %s '  '
+  for color in 7 3 6 2 5 1 4 ; do
     tput setab ${color}
-    printf %s '        '
+    printf %s '       '
   done
   tput sgr0
   echo
 done
 
 for y in 0 1; do
-  printf %s '           '
-  for color in 4 0 5 0 6 0 7; do
+  printf %s '  '
+  for color in 4 0 5 0 6 0 7 ; do
     tput setab ${color}
-    printf %s '        '
+    printf %s '       '
   done
   tput sgr0
   echo
 done
-<<'###BLOCK-COMMENT'
-for y in $(seq 0 4); do
-  printf %s '           '
-  for color in 4 4 4 4 4 7 7 7 7 7 5 5 5 5 5 0 0 0 0 0 0 0 0 0 0 0 0 0; do
-    tput setab ${color}
-    printf %s '  '
-  done
-  tput sgr0
-  echo
-done
-###BLOCK-COMMENT
 
-echo
 
-#---->
+
+
 # Set these values so the installer can still run in color; use: ${COL_...}
 COL_NC='\e[0m' # No Color
 COL_LIGHT_GREEN='\e[1;32m'
+COL_GREEN='\e[0;32m'
 COL_LIGHT_RED='\e[1;31m'
 TICK="[${COL_LIGHT_GREEN}✓${COL_NC}]"
 CROSS="[${COL_LIGHT_RED}✗${COL_NC}]"
@@ -90,18 +80,18 @@ COL_ITALIC="\e[1;3m"
 
 
 
-echo -e "${COL_LIGHT_GREEN}
-${COL_LIGHT_GREEN}  ██████╗ ██████╗ ███████╗███████╗████████╗ ██████╗ 
-${COL_LIGHT_GREEN}  ██╔══██╗██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔═══██╗
-${COL_LIGHT_GREEN}  ██████╔╝██████╔╝█████╗  ███████╗   ██║   ██║   ██║
-${COL_LIGHT_GREEN}  ██╔═══╝ ██╔══██╗██╔══╝  ╚════██║   ██║   ██║   ██║
-${COL_LIGHT_GREEN}  ██║     ██║  ██║███████╗███████║   ██║   ╚██████╔╝
-${COL_LIGHT_GREEN}  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝    ╚═════╝ "
+echo -e "${COL_GREEN}
+${COL_GREEN}  ██████╗ ██████╗ ███████╗███████╗████████╗ ██████╗
+${COL_GREEN}  ██╔══██╗██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔═══██╗
+${COL_GREEN}  ██████╔╝██████╔╝█████╗  ███████╗   ██║   ██║   ██║
+${COL_GREEN}  ██╔═══╝ ██╔══██╗██╔══╝  ╚════██║   ██║   ██║   ██║
+${COL_GREEN}  ██║     ██║  ██║███████╗███████║   ██║   ╚██████╔╝
+${COL_GREEN}  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝    ╚═════╝ "
 
 #echo -e "\n"
 #echo -e "${COL_ITALIC}${COL_LIGHT_GREEN}HI ${COL_NC}\n"
 sleep 1
-echo -e "${COL_LIGHT_CYAN}I'm presto (Presto's Unattended Media Aggregator )${COL_NC}\n "
+echo -e "${COL_LIGHT_CYAN}I'm presto (Perfectly Rationalized Engine for Superior Tidiness and Organization )${COL_NC}\n "
 
 #======================================================================================================================
 
@@ -161,6 +151,7 @@ printf "%-10s %-10s %-10s %-10s %-10s %-10s\n" "${columns[0]}" "${columns[1]}" "
 
 
 # Set group colors
+no_col="\e[0m"
 white="\e[37m"
 cyan="\e[36m"
 red="\e[31m"
@@ -168,8 +159,12 @@ green="\e[32m"
 yellow="\e[33m"
 blue="\e[34m"
 magenta="\e[35m"
+grey="\e[0;37m"
+lgt_green="\e[1;32m"
+lgt_green_inv="\e[7;32m"
 
 group_colors=(
+  "$no_col"
   "$white"
   "$cyan"
   "$red"
@@ -177,6 +172,9 @@ group_colors=(
   "$yellow"
   "$blue"
   "$magenta"
+  "$grey"
+  "$lgt_green"
+  "$lgt_green_inv"
 )
 
 # Set icon graphics
@@ -190,6 +188,7 @@ filesystem="💾"
 clock="🕰️"
 ram="RAM"
 weather="☁️"
+timer="⏳"
 
 icon_graphics=(
   "$laptop"
@@ -202,6 +201,7 @@ icon_graphics=(
   "$clock"
   "$ram"
   "$weather"
+  "$timer"
 )
 
 # check docker exists and if so show the file system here
@@ -213,10 +213,9 @@ docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6
 if is_command docker; then
     #echo -e "\n"
 echo -e "${COL_LIGHT_CYAN}
-
-  ╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
-   ║║║ ║║  ╠╩╗║╣ ╠╦╝
-  ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2
+             ╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
+              ║║║ ║║  ╠╩╗║╣ ╠╦╝
+             ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2
 
 "
     #docker system df
@@ -255,27 +254,28 @@ trap '{ echo -e "${red}Error: $?" >&2; }' ERR
 
 
 
+# Print the rest of the Raspberry Pi info
+echo -e " ${white}  ${calendar} Date and Time: ${date}"
+echo -e " ${blue}  ${os} Operating System: ${os}"
+echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col} $((cpu_temp/1000))°C"
+echo -e " ${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
+echo -e " ${red}  ${house} Internal IP: ${internal_ip}"
+echo -e " ${green}  ${globe} External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
+echo -e " ${grey}  ${clock} Uptime: ${uptime}"
+echo -e " ${green}  ${ram} Memory Usage: ${memory_usage}"
+echo -e " ${grey}  ${timer} Running Processes: ${running_processes}"
+echo -e " ${grey}  ${weather} Weather: ${weather_info}"
+echo -e ""
+
+
 # Print the filesystem usage for `/dev/mmcblk0p1` if it exists
 if [[ ! -z "$sd_path" ]]; then
   #echo -e " ${white}  ${filesystem}FILESYSTEM        used     Avail "
   #echo -e " ${green}  ${sd_path} ${sd_space_used} used, ${sd_space_left} left"
-  echo -e "${green} $(df -h /  | awk '{print ("  ",$0)}') "
+  echo -e "${grey} $(df -h /  | awk '{print ("  ",$0)}') \n"
 else
   echo -e " ${magenta}  SD card not found"
 fi
-
-# Print the rest of the Raspberry Pi info
-echo -e " ${white}  ${calendar} Date and Time: ${date}"
-echo -e " ${cyan}  ${laptop}  CPU Temp: $((cpu_temp/1000))°C"
-echo -e " ${white}  ${gpu} GPU Temp: ${gpu_temp}"
-echo -e " ${red}  ${house} Internal IP: ${internal_ip}"
-echo -e " ${green}  ${globe} External IP: ${external_ip}"
-echo -e " ${blue}  ${os} Operating System: ${os}"
-echo -e " ${white}  ${clock} Uptime: ${uptime}"
-echo -e " ${green}  ${ram} Memory Usage: ${memory_usage}"
-echo -e " ${white}  ${weather} Running Processes: ${running_processes}"
-echo -e " ${cyan}  ${weather} Weather: ${weather_info}"
-echo -e ""
 
 # Trap errors again so that the script can exit gracefully even if the trap handler fails
 trap - ERR
