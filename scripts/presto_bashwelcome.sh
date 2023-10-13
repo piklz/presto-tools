@@ -113,15 +113,6 @@ if [[ $(timeout 4 curl -s https://wttr.in/London?format=4 ) ]] 2>/dev/null
  fi
 
 
-#my Functions: app check
-# 'is [app] installed?' returns 1 or 0   for if-then loops 
-is_installed() {
-  if [ "$(dpkg -l "$1" 2> /dev/null | tail -n 1 | cut -d ' ' -f 1)" != "ii" ]; then
-    return 1
-  else
-    return 0
-  fi
-}
 
 
 #'is it a command?' helper for if-then returns 1 or 0
