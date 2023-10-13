@@ -41,14 +41,6 @@ export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 #CHECK IF WE HAVE EVER INSTALLED PRESTO /folder exists?
 
 
-# 'is [app] installed?' returns 1 or 0   for if-then loops 
-is_installed() {
-  if [ "$(dpkg -l "$1" 2> /dev/null | tail -n 1 | cut -d ' ' -f 1)" != "ii" ]; then
-    return 1
-  else
-    return 0
-  fi
-}
 
 git_pull(){
 
@@ -81,17 +73,15 @@ do_install_prestobashwelcome() {
 
 
 	if [ ! -d ~/presto-tools ]; then 
-       
-	    if  is_installed git ; then
-			sudo apt install git 
-		else
-			git_pull
-		fi
+       	
+		#run function to pull
+		git_pull
+	
 
 	else 
 		echo -e "presto-tools folder already exists no need to clone"
 		do_install_prestobashwelcome
-		echo -e "lest check for updates"
+		echo -e "lets check for updates"
 		git fetch
 
 	fi
