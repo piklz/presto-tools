@@ -40,34 +40,24 @@ export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 #first check if login bash mod is setup already
 
 do_install_prestobashwelcome() {
-if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
-    # code if found
-	echo "Found presto Welcome login link in bashrc no changes needed -continue check if prestotools git installed.."
+	if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
+		# code if found
+		echo "Found presto Welcome login link in bashrc no changes needed -continue check if prestotools git installed.."
 
-else
-    # add code if not found
-  echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
-	echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
+	else
+		# add code if not found
+	echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
+		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
 
 
-	#bashwelcome add to bash.rc here
-	echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
-	echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
-fi 
+		#bashwelcome add to bash.rc here
+		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
+		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
+	fi 
 
 
 #MAIN CHECK HERE
 
-#grab latests from github function when needed
-do_update() {
-
-
-        echo "Pulling latest project file from Github.com ---------------------------------------------"
-        git pull origin main
-        echo "git status ------------------------------------------------------------------------------"
-        git status
-
-}
 
 #lets check if there already / git clone it and run it
 if [ ! -d ~/presto-tools ]; then
@@ -112,5 +102,16 @@ fi
 
   source ~/.bashrc
   
+}
+
+# github update from main func
+do_update() {
+
+
+        echo "Pulling latest project file from Github.com ---------------------------------------------"
+        git pull origin main
+        echo "git status ------------------------------------------------------------------------------"
+        git status
+
 }
 do_install_prestobashwelcome
