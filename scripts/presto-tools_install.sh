@@ -112,5 +112,7 @@ do_update() {
 	echo "git status ------------------------------------------------------------------------------"
 	git status
 
+			}
+
 }
 do_install_prestobashwelcome
