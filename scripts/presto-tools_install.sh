@@ -76,9 +76,9 @@ if [ ! -d ~/presto-tools ]; then
 		git clone https://github.com/piklz/presto-tools ~/presto-tools
 		chmod +x ~/presto-tools/scripts/presto-tools_install.sh
 
-		echo "running presto-tools install..>:\n"
-		pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
-		popd
+		#echo "running presto-tools install..>:\n"
+		#pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
+		#popd
 
 		do_install_prestobashwelcome
 else	
