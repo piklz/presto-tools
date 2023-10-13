@@ -50,28 +50,28 @@ git_pull(){
 }
 
 
+
+
+do_install_prestobashwelcome() {
+	if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
+		# code if found
+		echo "Found presto Welcome login link in bashrc no changes needed -continue check if prestotools git installed.."
+
+	else
+		# add code if not found
+		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
+		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
+		#bashwelcome add to bash.rc here
+		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
+		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
+	fi 
+
+
+
 if [ ! -d ~/presto-tools ]; then 
-    git_pull()
+    git_pull
 
 else 
 	echo -e "presto-tools folder already exists no need to clone"
 fi
-
-
-
-do_install_prestobashwelcome() {
-if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
-    # code if found
-	echo "Found presto Welcome login link in bashrc no changes needed -continue check if prestotools git installed.."
-
-else
-	# add code if not found
-	echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
-	echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
-	#bashwelcome add to bash.rc here
-	echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
-	echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
-fi 
-
-
 
