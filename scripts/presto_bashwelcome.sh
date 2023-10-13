@@ -93,7 +93,7 @@ ${COL_GREEN}  ╚═╝     ╚═╝  ╚═╝╚══════╝╚═�
 #echo -e "\n"
 #echo -e "${COL_ITALIC}${COL_LIGHT_GREEN}HI ${COL_NC}\n"
 sleep 1
-echo -e "${COL_LIGHT_CYAN}I'm presto (Perfectly Rationalized Engine for Superior Tidiness and Organization )${COL_NC}\n "
+echo -e "${COL_LIGHT_CYAN}I'm presto (Perfectly Rationalized \nEngine for Superior Tidiness and Organization )${COL_NC}\n "
 
 #======================================================================================================================
 
