@@ -97,7 +97,7 @@ do_install_prestobashwelcome() {
 	if [ ! -d ~/presto-tools ]; then 
        	
 		#run function to pull
-		git_pull
+		git_pull_clone
 	else 
 		echo -e "presto-tools folder already exists no need to clone"
 		do_install_prestobashwelcome
