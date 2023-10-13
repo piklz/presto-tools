@@ -88,7 +88,7 @@ do_install_prestobashwelcome() {
 		else
 
  			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
-
+            git_pull
 		if [ ! -f .outofdate ]; then
 			whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
 			touch .outofdate
