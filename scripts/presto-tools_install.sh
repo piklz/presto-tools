@@ -58,6 +58,17 @@ fi
 
 #MAIN CHECK HERE
 
+#grab latests from github function when needed
+do_update() {
+
+
+        echo "Pulling latest project file from Github.com ---------------------------------------------"
+        git pull origin main
+        echo "git status ------------------------------------------------------------------------------"
+        git status
+
+}
+
 #lets check if there already / git clone it and run it
 if [ ! -d ~/presto-tools ]; then
   echo "GIT cloning the presto-tools now:\n"
@@ -89,6 +100,7 @@ else
             fi
         do_update
         fi
+fi
 
 
 
