@@ -47,7 +47,7 @@ do_update() {
 	echo "git status ------------------------------------------------------------------------------"
 	git status
 
-			}
+}
 
 
 
@@ -75,12 +75,12 @@ do_install_prestobashwelcome() {
 
 	#lets check if there already / git clone it and run it
 	if [ ! -d ~/presto-tools ]; then
-	echo "GIT cloning the presto-tools now:\n"
+			echo "GIT cloning the presto-tools now:\n"
 
 			git clone https://github.com/piklz/presto-tools ~/presto-tools
 			chmod +x ~/presto-tools/scripts/presto-tools_install.sh
 
-	echo "running presto-tools install..>:\n"
+			echo "running presto-tools install..>:\n"
 			pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
 			popd
 	else
@@ -102,7 +102,7 @@ do_install_prestobashwelcome() {
 			if [ ! -f .outofdate ]; then
 				whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
 				touch .outofdate
-			fi
+			
 				#do_update
 		fi
 	fi
@@ -112,7 +112,7 @@ do_install_prestobashwelcome() {
   
   #all done done 
   echo -e "${COL_LIGHT_RED}${INFO}${clear}files added from git or bash links modded.(bash.rc)\n "
-	echo -e "${COL_LIGHT_RED}${INFO}${clear}${COL_LIGHT_GREEN}prestos WELCOME BASH created! Logout and re-login to test  \n"
+  echo -e "${COL_LIGHT_RED}${INFO}${clear}${COL_LIGHT_GREEN}prestos WELCOME BASH created! Logout and re-login to test  \n"
 
   source ~/.bashrc
   
