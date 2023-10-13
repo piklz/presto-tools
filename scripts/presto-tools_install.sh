@@ -40,6 +40,16 @@ export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
 #CHECK IF WE HAVE EVER INSTALLED PRESTO /folder exists?
 
+git_pull(){
+
+	echo -e "GIT cloning the presto-tools now:\n"
+	git clone https://github.com/piklz/presto-tools ~/presto-tools
+	#since we insatlled presto lets link to bashwelcome in bashrc
+    do_install_prestobashwelcome
+
+}
+
+
 if [ ! -d ~/presto-tools ]; then 
     git_pull
 
@@ -64,12 +74,4 @@ else
 fi 
 
 
-git_pull(){
-
-	echo -e "GIT cloning the presto-tools now:\n"
-	git clone https://github.com/piklz/presto-tools ~/presto-tools
-	#since we insatlled presto lets link to bashwelcome in bashrc
-    do_install_prestobashwelcome
-
-}
 
