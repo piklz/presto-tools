@@ -89,7 +89,7 @@ else
          whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
            touch .outofdate
       fi
-        do_update
+        #do_update
    fi
 fi
 
@@ -102,17 +102,6 @@ fi
 
   source ~/.bashrc
   
-
-
-# github update from main func
-do_update() {
-
-	echo "Pulling latest project file from Github.com ---------------------------------------------"
-	git pull origin main
-	echo "git status ------------------------------------------------------------------------------"
-	git status
-
-			}
 
 }
 do_install_prestobashwelcome
