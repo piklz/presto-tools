@@ -127,6 +127,7 @@ is_command() {
 
 check_git() {
 
+  pushd ~/presto-tools/
   git fetch  
 
   if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
