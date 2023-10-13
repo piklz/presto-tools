@@ -48,9 +48,6 @@ do_update() {
 	git status
 
 }
-
-
-
 #first check if login bash mod is setup already
 do_install_prestobashwelcome() {
 	if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
@@ -58,7 +55,7 @@ do_install_prestobashwelcome() {
 		echo "Found presto Welcome login link in bashrc no changes needed -continue check if prestotools git installed.."
 
 	else
-		# add code if not found
+		#add code if not found
 		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
 		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
 
@@ -66,14 +63,17 @@ do_install_prestobashwelcome() {
 		#bashwelcome add to bash.rc here
 		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
 		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
-	
+
 }
 
 
 
 #MAIN CHECK HERE ------------------
-do_install(){
+
+
+do_install() {
 #lets check if there already / git clone it and run it
+
 if [ ! -d ~/presto-tools ]; then
 		echo "GIT cloning the presto-tools now:\n"
 
@@ -85,8 +85,7 @@ if [ ! -d ~/presto-tools ]; then
 		popd
 
 		do_install_prestobashwelcome
-else
-	
+else	
 	echo "presto-tools scripts dir already installed - continue LETS CHECK FOR UPDATES instead"
 	git fetch
 	echo "GIT FETCHING  for updates now " 
@@ -105,9 +104,7 @@ else
 			whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
 			touch .outofdate
 		fi
-			#do_update
 	fi
-fi
 fi
 
   
