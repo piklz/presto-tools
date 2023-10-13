@@ -59,7 +59,14 @@ COL_LIGHT_GREY="\e[1;2m"
 COL_ITALIC="\e[1;3m"
 
 
-git_pull(){
+
+git_pull_update(){
+
+	git pull origin develop
+}
+
+
+git_pull_clone(){
 
 	echo -e "GIT cloning the presto-tools now:\n"
 	#TEST develop
@@ -105,7 +112,11 @@ do_install_prestobashwelcome() {
 		else
 
  			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
-            git_pull
+            
+			
+			git_pull_update
+
+
 		if [ ! -f .outofdate ]; then
 			whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
 			touch .outofdate
