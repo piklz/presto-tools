@@ -68,11 +68,11 @@ do_install_prestobashwelcome() {
 }
 
 
-if [ ! -d ~/presto-tools ]; then 
-    git_pull
+	if [ ! -d ~/presto-tools ]; then 
+		git_pull
 
-else 
-	echo -e "presto-tools folder already exists no need to clone"
+	else 
+		echo -e "presto-tools folder already exists no need to clone"
 
 
-fi
+	fi
