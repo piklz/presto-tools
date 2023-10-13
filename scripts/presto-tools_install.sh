@@ -54,8 +54,6 @@ git_pull(){
 }
 
 
-
-
 do_install_prestobashwelcome() {
 	if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
 		# code if found
@@ -76,8 +74,6 @@ do_install_prestobashwelcome() {
        	
 		#run function to pull
 		git_pull
-	
-
 	else 
 		echo -e "presto-tools folder already exists no need to clone"
 		do_install_prestobashwelcome
