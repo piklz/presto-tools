@@ -65,7 +65,7 @@ do_install_prestobashwelcome() {
 		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
 		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
 	fi 
-
+}
 
 
 if [ ! -d ~/presto-tools ]; then 
@@ -73,5 +73,6 @@ if [ ! -d ~/presto-tools ]; then
 
 else 
 	echo -e "presto-tools folder already exists no need to clone"
-fi
 
+
+fi
