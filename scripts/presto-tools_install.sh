@@ -48,6 +48,7 @@ do_update() {
 	git status
 
 }
+
 #first check if login bash mod is setup already
 do_install_prestobashwelcome() {
 	if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
@@ -65,11 +66,6 @@ do_install_prestobashwelcome() {
 		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
     fi
 }
-
-
-
-#MAIN CHECK HERE ------------------
-
 
 do_install() {
 #lets check if there already / git clone it and run it
