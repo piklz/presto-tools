@@ -82,7 +82,7 @@ do_install_prestobashwelcome() {
 
 	if [ ! -d ~/presto-tools ]; then 
        
-	    if [! is_installed git]
+	    if [! is_installed git];then
 			sudo apt install git 
 		else
 
