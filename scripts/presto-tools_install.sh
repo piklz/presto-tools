@@ -37,72 +37,90 @@ set -e
 # Append common folders to the PATH to ensure that all basic commands are available.
 export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
-#first check if login bash mod is setup already
+
+#CHECK IF WE HAVE EVER INSTALLED PRESTO /folder exists ?
+
+# Set these values so the installer can still run in color; use: ${COL_...}
+COL_NC='\e[0m' # No Color
+COL_LIGHT_GREEN='\e[1;32m'
+COL_GREEN='\e[0;32m'
+COL_LIGHT_RED='\e[1;31m'
+TICK="[${COL_LIGHT_GREEN}✓${COL_NC}]"
+CROSS="[${COL_LIGHT_RED}✗${COL_NC}]"
+INFO="[i]"
+# shellcheck disable=SC2034
+DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
+OVER="\\r\\033[K"
+COL_PINK="\e[1;35m"
+COL_LIGHT_CYAN="\e[1;36m"
+COL_LIGHT_PURPLE="\e[1;34m"
+COL_LIGHT_YELLOW="\e[1;33m"
+COL_LIGHT_GREY="\e[1;2m"
+COL_ITALIC="\e[1;3m"
+
+
+
+git_pull_update(){
+	
+	git pull origin develop
+}
+
+
+git_pull_clone(){
+
+	echo -e "GIT cloning the presto-tools now:\n"
+	#TEST develop
+	git clone -b develop https://github.com/piklz/presto-tools ~/presto-tools
+	#git clone https://github.com/piklz/presto-tools ~/presto-tools
+	#since we installed presto lets link to bashwelcome in bashrc
+    do_install_prestobashwelcome
+
+}
+
 
 do_install_prestobashwelcome() {
-if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
-    # code if found
-	echo "Found presto Welcome login link in bashrc no changes needed -continue check if prestotools git installed.."
+	if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
+		# code if found
+		echo "Found presto Welcome login link in bashrc no changes needed -continue check if prestotools git installed.."
 
-else
-    # add code if not found
-  echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
-	echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
-
-
-	#bashwelcome add to bash.rc here
-	echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
-	echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
-fi 
-
-
-#MAIN CHECK HERE
-
-#lets check if there already / git clone it and run it
-if [ ! -d ~/presto-tools ]; then
-  echo "GIT cloning the presto-tools now:\n"
-
-        git clone https://github.com/piklz/presto-tools ~/presto-tools
-        chmod +x ~/presto-tools/scripts/presto-tools_install.sh
-
-  echo "running presto-tools install..>:\n"
-        pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
-        popd
-else
-        echo "presto-tools scripts dir already installed - continue LETS CHECK FOR UPDATES instead"
-        git fetch
-        echo "GIT FETCHING  for updates now " 
-
-        if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
-
-        #delete .outofdate if it does exist
-        [ -f .outofdate ] && rm .outofdate      
-        echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
-
-        else
-
-            echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
-
-            if [ ! -f .outofdate ]; then
-                whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
-                   touch .outofdate
-            fi
-        do_update
-        fi
-
-
-
-
-
-
-
-
-  
-  #all done done 
-  echo -e "${COL_LIGHT_RED}${INFO}${clear}files added from git or bash links modded.(bash.rc)\n "
-	echo -e "${COL_LIGHT_RED}${INFO}${clear}${COL_LIGHT_GREEN}prestos WELCOME BASH created! Logout and re-login to test  \n"
-
-  source ~/.bashrc
-  
+	else
+		# add code if not found
+		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
+		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
+		#bashwelcome add to bash.rc here
+		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
+		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
+	fi 
 }
-do_install_prestobashwelcome
+
+
+	if [ ! -d ~/presto-tools ]; then 
+       	
+		#run function to pull
+		git_pull_clone
+	else 
+		echo -e "presto-tools folder already exists no need to clone"
+		do_install_prestobashwelcome
+		echo -e "lets check for updates"
+		git fetch 
+		if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
+
+			#delete .outofdate if it does exist
+			[ -f .outofdate ] && rm .outofdate	
+			echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
+
+		else
+
+ 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
+            
+			
+			git_pull_update
+
+
+		if [ ! -f .outofdate ]; then
+			whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
+			touch .outofdate
+		fi
+fi
+
+	fi

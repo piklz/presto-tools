@@ -93,7 +93,7 @@ ${COL_GREEN}  ╚═╝     ╚═╝  ╚═╝╚══════╝╚═�
 #echo -e "\n"
 #echo -e "${COL_ITALIC}${COL_LIGHT_GREEN}HI ${COL_NC}\n"
 sleep 1
-echo -e "${COL_LIGHT_CYAN}I'm presto (Perfectly Rationalized Engine for Superior Tidiness and Organization )${COL_NC}\n "
+echo -e "${COL_LIGHT_CYAN}\nI'm presto \n         (Perfectly Rationalized  Engine for \n                Superior Tidiness and Organization )${COL_NC}\n "
 
 #======================================================================================================================
 
@@ -113,15 +113,6 @@ if [[ $(timeout 4 curl -s https://wttr.in/London?format=4 ) ]] 2>/dev/null
  fi
 
 
-#my Functions: app check
-# 'is [app] installed?' returns 1 or 0   for if-then loops 
-is_installed() {
-  if [ "$(dpkg -l "$1" 2> /dev/null | tail -n 1 | cut -d ' ' -f 1)" != "ii" ]; then
-    return 1
-  else
-    return 0
-  fi
-}
 
 
 #'is it a command?' helper for if-then returns 1 or 0
@@ -132,6 +123,8 @@ is_command() {
 
     command -v "${check_command}" >/dev/null 2>&1
 }
+
+
 
 
 
@@ -206,8 +199,6 @@ icon_graphics=(
   "$timer"
 )
 
-# check docker exists and if so show the file system here
-docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read type total active size reclaimable; do printf "%-12s ${cyan}%-12s ${magenta}%-12s ${white}%-12s ${green}%-12s\n" "$type" "$total" "$active" "$size" "$reclaimable";done)
 
 
 
@@ -221,6 +212,9 @@ echo -e "${COL_LIGHT_CYAN}
 
 "
     #docker system df
+    # check docker exists and if so show the file system here
+    docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read type total active size reclaimable; do printf "%-12s ${cyan}%-12s ${magenta}%-12s ${white}%-12s ${green}%-12s\n" "$type" "$total" "$active" "$size" "$reclaimable";done)
+
     echo -e "${docker_filesystem_status} ${red}# "
     echo -e "\n"
 else
@@ -232,7 +226,7 @@ fi
 # Get Raspberry Pi info
 cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp )
 gpu_temp=$(vcgencmd measure_temp |  awk '{split($0,numbers,"=")} {print numbers[2]}')
-internal_ip=$(hostname -I | awk '{print $2, $3, $4}' | head -3) #only show first three as theres possibily many remove awk part to show all
+internal_ip=$(hostname -I | awk '{print $1, $2, $3, $4}' | head -3) #only show first three as theres possibily many remove awk part to show all
 external_ip=$(curl -s https://icanhazip.com)
 date=$(date +"%A, %d %B %Y, %H:%M:%S")
 os=$(uname -s)
@@ -258,15 +252,15 @@ trap '{ echo -e "${red}Error: $?" >&2; }' ERR
 
 # Print the rest of the Raspberry Pi info
 echo -e " ${white}  ${calendar} Date and Time: ${date}"
-echo -e " ${blue}  ${os} Operating System: ${os}"
-echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col} $((cpu_temp/1000))°C"
+echo -e " ${blue}  Operating System: ${os}"
+echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col}$((cpu_temp/1000))°C"
 echo -e " ${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
-echo -e " ${red}  ${house} Internal IP: ${internal_ip}"
-echo -e " ${green}  ${globe} External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
-echo -e " ${grey}  ${clock} Uptime: ${uptime}"
-echo -e " ${green}  ${ram} Memory Usage: ${memory_usage}"
-echo -e " ${grey}  ${timer} Running Processes: ${running_processes}"
-echo -e " ${grey}  ${weather} Weather: ${weather_info}"
+echo -e " ${red}  ${house}   Internal IP: ${internal_ip}"
+echo -e " ${green}  ${globe}   External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
+echo -e " ${grey}  ${clock}    Uptime: ${uptime}"
+echo -e " ${green}  ${ram}  Memory Usage: ${memory_usage}"
+echo -e " ${grey}  ${timer}   Running Processes: ${running_processes}"
+echo -e " ${grey}  ${weather}    Weather: ${weather_info}"
 echo -e ""
 
 
@@ -278,6 +272,9 @@ if [[ ! -z "$sd_path" ]]; then
 else
   echo -e " ${magenta}  SD card not found"
 fi
+
+
+
 
 # Trap errors again so that the script can exit gracefully even if the trap handler fails
 trap - ERR
