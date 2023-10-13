@@ -125,19 +125,20 @@ is_command() {
 }
 
 
-check_git(){
+check_git() {
 
-    git fetch 
-    
-		if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
+  git fetch 
 
-			#delete .outofdate if it does exist
-			[ -f .outofdate ] && rm .outofdate	
-			#echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
+  if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
 
-		else
+    #delete .outofdate if it does exist
+    [ -f .outofdate ] && rm .outofdate	
+    #echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
 
- 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available run the install to update ${COL_LIGHT_GREEN} ✓${clear}"
+  else
+
+    echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available run the install to update ${COL_LIGHT_GREEN} ✓${clear}"
+  fi
 }
 
 
