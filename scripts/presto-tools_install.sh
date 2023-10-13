@@ -67,47 +67,48 @@ do_install_prestobashwelcome() {
 		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
 		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
 	
+}
 
 
 
+#MAIN CHECK HERE ------------------
+do_install(){
+#lets check if there already / git clone it and run it
+if [ ! -d ~/presto-tools ]; then
+		echo "GIT cloning the presto-tools now:\n"
 
-		#MAIN CHECK HERE ------------------
+		git clone https://github.com/piklz/presto-tools ~/presto-tools
+		chmod +x ~/presto-tools/scripts/presto-tools_install.sh
 
-		#lets check if there already / git clone it and run it
-		if [ ! -d ~/presto-tools ]; then
-				echo "GIT cloning the presto-tools now:\n"
+		echo "running presto-tools install..>:\n"
+		pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
+		popd
 
-				git clone https://github.com/piklz/presto-tools ~/presto-tools
-				chmod +x ~/presto-tools/scripts/presto-tools_install.sh
+		do_install_prestobashwelcome
+else
+	
+	echo "presto-tools scripts dir already installed - continue LETS CHECK FOR UPDATES instead"
+	git fetch
+	echo "GIT FETCHING  for updates now " 
 
-				echo "running presto-tools install..>:\n"
-				pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
-				popd
-		else
-			
-			echo "presto-tools scripts dir already installed - continue LETS CHECK FOR UPDATES instead"
-			git fetch
-			echo "GIT FETCHING  for updates now " 
+	if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
 
-			if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
+		#delete .outofdate if it does exist
+		[ -f .outofdate ] && rm .outofdate      
+		echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
 
-				#delete .outofdate if it does exist
-				[ -f .outofdate ] && rm .outofdate      
-				echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
+	else
 
-			else
+		echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
 
-				echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
-
-				if [ ! -f .outofdate ]; then
-					whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
-					touch .outofdate
-				fi
-					#do_update
-			fi
+		if [ ! -f .outofdate ]; then
+			whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
+			touch .outofdate
 		fi
+			#do_update
 	fi
-
+fi
+fi
 
   
 	#all done done 
@@ -115,7 +116,5 @@ do_install_prestobashwelcome() {
 	echo -e "${COL_LIGHT_RED}${INFO}${clear}${COL_LIGHT_GREEN}prestos WELCOME BASH created! Logout and re-login to test  \n"
 
 	source ~/.bashrc
-  
-
 }
-do_install_prestobashwelcome
+do_install
