@@ -37,8 +37,21 @@ set -e
 # Append common folders to the PATH to ensure that all basic commands are available.
 export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
-#first check if login bash mod is setup already
 
+
+# github update from main func
+do_update() {
+
+	echo "Pulling latest project file from Github.com ---------------------------------------------"
+	git pull origin main
+	echo "git status ------------------------------------------------------------------------------"
+	git status
+
+			}
+
+
+
+#first check if login bash mod is setup already
 do_install_prestobashwelcome() {
 	if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
 		# code if found
@@ -106,3 +119,4 @@ do_install_prestobashwelcome() {
 
 }
 do_install_prestobashwelcome
+
