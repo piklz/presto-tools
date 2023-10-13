@@ -83,14 +83,14 @@ do_install_prestobashwelcome() {
 
 			#delete .outofdate if it does exist
 			[ -f .outofdate ] && rm .outofdate	
-			echo -e "${INFO} ${COL_LIGHT_GREEN}    PUMA Git local/repo is up-to-date${clear}"
+			echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
 
 		else
 
- 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PUMA update is available${COL_LIGHT_GREEN} ✓${clear}"
+ 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
 
 		if [ ! -f .outofdate ]; then
-			whiptail --title "Project update" --msgbox "PUMA update is available \nYou will not be reminded again until your next update" 8 78
+			whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
 			touch .outofdate
 		fi
 fi
