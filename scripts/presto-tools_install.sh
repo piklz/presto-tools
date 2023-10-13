@@ -61,6 +61,7 @@ COL_ITALIC="\e[1;3m"
 
 
 git_pull_update(){
+	popd
     pushd ~/presto-tools
 	git pull origin develop
 }
@@ -102,7 +103,7 @@ do_install_prestobashwelcome() {
 		echo -e "presto-tools folder already exists no need to clone"
 		do_install_prestobashwelcome
 		echo -e "lets check for updates"
-		git fetch
+		git fetch 
 		if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
 
 			#delete .outofdate if it does exist
