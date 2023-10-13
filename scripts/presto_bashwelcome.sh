@@ -151,6 +151,7 @@ printf "%-10s %-10s %-10s %-10s %-10s %-10s\n" "${columns[0]}" "${columns[1]}" "
 
 
 # Set group colors
+no_col="\e[0m"
 white="\e[37m"
 cyan="\e[36m"
 red="\e[31m"
@@ -158,8 +159,12 @@ green="\e[32m"
 yellow="\e[33m"
 blue="\e[34m"
 magenta="\e[35m"
+grey="\e[0;37m"
+lgt_green="\e[1;32m"
+lgt_green_inv="\e[7;32m"
 
 group_colors=(
+  "$no_col"
   "$white"
   "$cyan"
   "$red"
@@ -167,6 +172,9 @@ group_colors=(
   "$yellow"
   "$blue"
   "$magenta"
+  "$grey"
+  "$lgt_green"
+  "$lgt_green_inv"
 )
 
 # Set icon graphics
@@ -180,6 +188,7 @@ filesystem="💾"
 clock="🕰️"
 ram="RAM"
 weather="☁️"
+timer="⏳"
 
 icon_graphics=(
   "$laptop"
@@ -192,6 +201,7 @@ icon_graphics=(
   "$clock"
   "$ram"
   "$weather"
+  "$timer"
 )
 
 # check docker exists and if so show the file system here
@@ -244,27 +254,28 @@ trap '{ echo -e "${red}Error: $?" >&2; }' ERR
 
 
 
+# Print the rest of the Raspberry Pi info
+echo -e " ${white}  ${calendar} Date and Time: ${date}"
+echo -e " ${blue}  ${os} Operating System: ${os}"
+echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col} $((cpu_temp/1000))°C"
+echo -e " ${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
+echo -e " ${red}  ${house} Internal IP: ${internal_ip}"
+echo -e " ${green}  ${globe} External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
+echo -e " ${grey}  ${clock} Uptime: ${uptime}"
+echo -e " ${green}  ${ram} Memory Usage: ${memory_usage}"
+echo -e " ${grey}  ${timer} Running Processes: ${running_processes}"
+echo -e " ${grey}  ${weather} Weather: ${weather_info}"
+echo -e ""
+
+
 # Print the filesystem usage for `/dev/mmcblk0p1` if it exists
 if [[ ! -z "$sd_path" ]]; then
   #echo -e " ${white}  ${filesystem}FILESYSTEM        used     Avail "
   #echo -e " ${green}  ${sd_path} ${sd_space_used} used, ${sd_space_left} left"
-  echo -e "${green} $(df -h /  | awk '{print ("  ",$0)}') "
+  echo -e "${grey} $(df -h /  | awk '{print ("  ",$0)}') \n"
 else
   echo -e " ${magenta}  SD card not found"
 fi
-
-# Print the rest of the Raspberry Pi info
-echo -e " ${white}  ${calendar} Date and Time: ${date}"
-echo -e " ${cyan}  ${laptop}  CPU Temp: $((cpu_temp/1000))°C"
-echo -e " ${white}  ${gpu} GPU Temp: ${gpu_temp}"
-echo -e " ${red}  ${house} Internal IP: ${internal_ip}"
-echo -e " ${green}  ${globe} External IP: ${external_ip}"
-echo -e " ${blue}  ${os} Operating System: ${os}"
-echo -e " ${white}  ${clock} Uptime: ${uptime}"
-echo -e " ${green}  ${ram} Memory Usage: ${memory_usage}"
-echo -e " ${white}  ${weather} Running Processes: ${running_processes}"
-echo -e " ${cyan}  ${weather} Weather: ${weather_info}"
-echo -e ""
 
 # Trap errors again so that the script can exit gracefully even if the trap handler fails
 trap - ERR
