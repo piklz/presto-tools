@@ -198,7 +198,20 @@ icon_graphics=(
 )
 
 
+check_git(){
 
+    git fetch 
+		if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
+
+			#delete .outofdate if it does exist
+			[ -f .outofdate ] && rm .outofdate	
+			#echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
+
+		else
+
+ 			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available run the install to update ${COL_LIGHT_GREEN} ✓${clear}"
+            
+}
 
 #is docker is installed? show user their containers active status
 if is_command docker; then
@@ -255,7 +268,7 @@ echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col}$((cpu_temp/1000))°C"
 echo -e " ${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
 echo -e " ${red}  ${house}   Internal IP: ${internal_ip}"
 echo -e " ${green}  ${globe}   External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
-echo -e " ${grey}  ${clock}   Uptime: ${uptime}"
+echo -e " ${grey}  ${clock}    Uptime: ${uptime}"
 echo -e " ${green}  ${ram}  Memory Usage: ${memory_usage}"
 echo -e " ${grey}  ${timer}   Running Processes: ${running_processes}"
 echo -e " ${grey}  ${weather}    Weather: ${weather_info}"
@@ -270,6 +283,9 @@ if [[ ! -z "$sd_path" ]]; then
 else
   echo -e " ${magenta}  SD card not found"
 fi
+
+
+check_git
 
 # Trap errors again so that the script can exit gracefully even if the trap handler fails
 trap - ERR
