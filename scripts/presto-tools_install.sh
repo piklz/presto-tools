@@ -38,8 +38,25 @@ set -e
 export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
 
-#CHECK IF WE HAVE EVER INSTALLED PRESTO /folder exists?
+#CHECK IF WE HAVE EVER INSTALLED PRESTO /folder exists ?
 
+# Set these values so the installer can still run in color; use: ${COL_...}
+COL_NC='\e[0m' # No Color
+COL_LIGHT_GREEN='\e[1;32m'
+COL_GREEN='\e[0;32m'
+COL_LIGHT_RED='\e[1;31m'
+TICK="[${COL_LIGHT_GREEN}✓${COL_NC}]"
+CROSS="[${COL_LIGHT_RED}✗${COL_NC}]"
+INFO="[i]"
+# shellcheck disable=SC2034
+DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
+OVER="\\r\\033[K"
+COL_PINK="\e[1;35m"
+COL_LIGHT_CYAN="\e[1;36m"
+COL_LIGHT_PURPLE="\e[1;34m"
+COL_LIGHT_YELLOW="\e[1;33m"
+COL_LIGHT_GREY="\e[1;2m"
+COL_ITALIC="\e[1;3m"
 
 
 git_pull(){
