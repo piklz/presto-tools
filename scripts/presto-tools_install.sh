@@ -63,7 +63,7 @@ do_install_prestobashwelcome() {
 		#bashwelcome add to bash.rc here
 		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
 		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
-
+    fi
 }
 
 
