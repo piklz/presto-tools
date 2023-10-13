@@ -51,7 +51,7 @@ git_pull(){
 
 
 if [ ! -d ~/presto-tools ]; then 
-    git_pull
+    git_pull()
 
 else 
 	echo -e "presto-tools folder already exists no need to clone"
