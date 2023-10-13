@@ -66,47 +66,47 @@ do_install_prestobashwelcome() {
 		#bashwelcome add to bash.rc here
 		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
 		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
-	fi 
+	
 
 
 
 
-    #MAIN CHECK HERE ------------------
+		#MAIN CHECK HERE ------------------
 
-	#lets check if there already / git clone it and run it
-	if [ ! -d ~/presto-tools ]; then
-			echo "GIT cloning the presto-tools now:\n"
+		#lets check if there already / git clone it and run it
+		if [ ! -d ~/presto-tools ]; then
+				echo "GIT cloning the presto-tools now:\n"
 
-			git clone https://github.com/piklz/presto-tools ~/presto-tools
-			chmod +x ~/presto-tools/scripts/presto-tools_install.sh
+				git clone https://github.com/piklz/presto-tools ~/presto-tools
+				chmod +x ~/presto-tools/scripts/presto-tools_install.sh
 
-			echo "running presto-tools install..>:\n"
-			pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
-			popd
-	else
-		
-		echo "presto-tools scripts dir already installed - continue LETS CHECK FOR UPDATES instead"
-		git fetch
-		echo "GIT FETCHING  for updates now " 
-
-		if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
-
-		#delete .outofdate if it does exist
-		[ -f .outofdate ] && rm .outofdate      
-		echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
-
+				echo "running presto-tools install..>:\n"
+				pushd ~/presto-tools/scripts && sudo ./presto-tools_install.sh
+				popd
 		else
-
-			echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
-
-			if [ ! -f .outofdate ]; then
-				whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
-				touch .outofdate
 			
-				#do_update
+			echo "presto-tools scripts dir already installed - continue LETS CHECK FOR UPDATES instead"
+			git fetch
+			echo "GIT FETCHING  for updates now " 
+
+			if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
+
+			#delete .outofdate if it does exist
+			[ -f .outofdate ] && rm .outofdate      
+			echo -e "${INFO} ${COL_LIGHT_GREEN}    PRESTO Git local/repo is up-to-date${clear}"
+
+			else
+
+				echo -e "${INFO} ${COL_LIGHT_GREEN}   PRESTO update is available${COL_LIGHT_GREEN} ✓${clear}"
+
+				if [ ! -f .outofdate ]; then
+					whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
+					touch .outofdate
+				fi
+					#do_update
+			fi
 		fi
 	fi
-
 
 
   
