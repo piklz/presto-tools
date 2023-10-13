@@ -75,6 +75,7 @@ do_install_prestobashwelcome() {
 
 	else 
 		echo -e "presto-tools folder already exists no need to clone"
+		do_install_prestobashwelcome
 		echo -e "lest check for updates"
 		git fetch
 
