@@ -127,7 +127,7 @@ is_command() {
 
 check_git() {
 
-  #git fetch 
+  #git fetch  
 
   if [ $(git status | grep -c "Your branch is up to date") -eq 1 ]; then
 
