@@ -215,7 +215,7 @@ echo -e "${COL_LIGHT_CYAN}
     # check docker exists and if so show the file system here
     docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read type total active size reclaimable; do printf "%-12s ${cyan}%-12s ${magenta}%-12s ${white}%-12s ${green}%-12s\n" "$type" "$total" "$active" "$size" "$reclaimable";done)
 
-    echo -e "${docker_filesystem_status} 🐋 "
+    echo -e "${docker_filesystem_status} "
     echo -e "\n"
 else
     echo -e "     "
