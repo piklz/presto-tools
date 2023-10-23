@@ -229,7 +229,8 @@ gpu_temp=$(vcgencmd measure_temp |  awk '{split($0,numbers,"=")} {print numbers[
 internal_ip=$(hostname -I | awk '{print $1, $2, $3, $4}' | head -3) #only show first three as theres possibily many remove awk part to show all
 external_ip=$(curl -s https://ipv4.icanhazip.com) #curl -s https://ipv6.icanhazip.com for ipv6 values
 date=$(date +"%A, %d %B %Y, %H:%M:%S")
-os=$(uname -s)
+#os=$(uname -s)
+os=$(lsb_release  -d -r -c   | awk -F: '{split($2,a," "); printf a[1]" "  }')
 uptime=$(uptime -p)
 memory_usage=$(free -h | grep Mem: | awk '{print $2, $3}')
 running_processes=$(ps aux | wc -l)
