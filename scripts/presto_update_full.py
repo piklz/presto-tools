@@ -24,9 +24,9 @@
 #  			to use run:  sudo ./presto-tools_install.sh
 #
 #--------------------------------------------------------------------------------------------------
-# author        : piklz
-# github		: https://github.com/piklz/presto-tools.git
-# web		    : https://github.com/piklz/presto-tools.git
+# author    : piklz
+# github    : https://github.com/piklz/presto-tools.git
+# web       : https://github.com/piklz/presto-tools.git
 #
 #########################################################################################################################
 
