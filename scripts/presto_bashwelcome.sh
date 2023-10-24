@@ -226,7 +226,7 @@ fi
 # Get Raspberry Pi info
 cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp )
 gpu_temp=$(vcgencmd measure_temp |  awk '{split($0,numbers,"=")} {print numbers[2]}')
-internal_ip=$(hostname -I | awk '{print $1, $2, $3, $4}' | head -3) #only show first three as theres possibily many remove awk part to show all
+internal_ip=$(hostname -I | awk '{print $1, $2, $3, $4}' | head -2) #only show first three as theres possibily many remove awk part to show all
 external_ip=$(curl -s https://ipv4.icanhazip.com) #curl -s https://ipv6.icanhazip.com for ipv6 values
 date=$(date +"%A, %d %B %Y, %H:%M:%S")
 #os=$(uname -s)
@@ -254,13 +254,14 @@ trap '{ echo -e "${red}Error: $?" >&2; }' ERR
 # Print the rest of the Raspberry Pi info
 echo -e " ${white}  ${calendar} Date and Time: ${date}"
 echo -e " ${blue}  Operating System: ${os}\n"
+
 echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col}$((cpu_temp/1000))°C"
 echo -e " ${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
 echo -e " ${red}  ${house}   Internal IP: ${internal_ip}"
 echo -e " ${green}  ${globe}   External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
 echo -e " ${grey}  ${clock}    Uptime: ${uptime}"
 echo -e " ${green}  ${ram}  Memory Usage: ${memory_usage}"
-echo -e " ${grey}  ${timer}   Running Processes: ${running_processes}"
+echo -e " ${yellow}  ${timer}   Running Processes: ${running_processes}"
 echo -e " ${grey}  ${weather}    Weather: ${weather_info}"
 echo -e ""
 
