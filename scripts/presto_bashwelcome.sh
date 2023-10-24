@@ -231,7 +231,7 @@ external_ip=$(curl -s https://ipv4.icanhazip.com) #curl -s https://ipv6.icanhazi
 date=$(date +"%A, %d %B %Y, %H:%M:%S")
 #os=$(uname -s)
 os=$(lsb_release  -d -r -c   | awk -F: '{split($2,a," "); printf a[1]" "  }';uname -s -m)
-uptime=$(" ";uptime -p)
+uptime=$(echo -e " ";uptime -p)
 memory_usage=$(free -h | grep Mem: | awk '{print $2, $3}')
 running_processes=$(ps aux | wc -l)
 #weather_info=$(curl -s https://wttr.in/London?format=4) #code check timeout is above already suing this var
