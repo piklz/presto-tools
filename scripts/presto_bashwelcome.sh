@@ -208,14 +208,14 @@ if is_command docker; then
 echo -e "${COL_LIGHT_CYAN}
              ╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
               ║║║ ║║  ╠╩╗║╣ ╠╦╝
-             ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2
+             ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2 🐋
 
 "
     #docker system df
     # check docker exists and if so show the file system here
     docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read type total active size reclaimable; do printf "%-12s ${cyan}%-12s ${magenta}%-12s ${white}%-12s ${green}%-12s\n" "$type" "$total" "$active" "$size" "$reclaimable";done)
 
-    echo -e "${docker_filesystem_status} ${red}# "
+    echo -e "${docker_filesystem_status} "
     echo -e "\n"
 else
     echo -e "     "
@@ -229,7 +229,8 @@ gpu_temp=$(vcgencmd measure_temp |  awk '{split($0,numbers,"=")} {print numbers[
 internal_ip=$(hostname -I | awk '{print $1, $2, $3, $4}' | head -3) #only show first three as theres possibily many remove awk part to show all
 external_ip=$(curl -s https://ipv4.icanhazip.com) #curl -s https://ipv6.icanhazip.com for ipv6 values
 date=$(date +"%A, %d %B %Y, %H:%M:%S")
-os=$(uname -s)
+#os=$(uname -s)
+os=$(lsb_release  -d -r -c   | awk -F: '{split($2,a," "); printf a[1]" "  }';uname -s -m)
 uptime=$(uptime -p)
 memory_usage=$(free -h | grep Mem: | awk '{print $2, $3}')
 running_processes=$(ps aux | wc -l)
@@ -252,7 +253,7 @@ trap '{ echo -e "${red}Error: $?" >&2; }' ERR
 
 # Print the rest of the Raspberry Pi info
 echo -e " ${white}  ${calendar} Date and Time: ${date}"
-echo -e " ${blue}  Operating System: ${os}"
+echo -e " ${blue}  Operating System: ${os}\n"
 echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col}$((cpu_temp/1000))°C"
 echo -e " ${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
 echo -e " ${red}  ${house}   Internal IP: ${internal_ip}"
