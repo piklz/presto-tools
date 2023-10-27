@@ -108,9 +108,9 @@ if [[ $(timeout 4 curl -s https://wttr.in/London?format=4 ) ]] 2>/dev/null
   then #echo "This page exists."
       #short curl wttr.in/London?format="%l:+%c+%t+%m+%w"
       #curl -s wttr.in/London?format="%l:+%c+%C+%t+feels-like+%f+phase%m++humid+%h+🌞+%S+🌇+%s+\n" # this code in term runs as is
-      weather_info=$(curl -s https://wttr.in/London?format="%l:+%c+%C+%t+feels-like+\n     +%f+phase%m++humid+%h+🌞+%S+🌇+%s+\n")
+      weather_info=$(curl -s https://wttr.in/London?format="%l:+%c+%C+%t+feels-like+\n+%f+     phase%m++humid+%h+🌞+%S+🌇+%s+\n")
   else echo -e "The weather [wttr.in] is downright now .. continue\n"
-weather_info=" might be sunny somewhere?"
+    weather_info=" might be sunny somewhere?"
  fi
 
 
