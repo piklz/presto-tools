@@ -226,7 +226,7 @@ fi
 # Get Raspberry Pi info
 cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp )
 gpu_temp=$(vcgencmd measure_temp |  awk '{split($0,numbers,"=")} {print numbers[2]}')
-internal_ip=$(hostname -I | awk '{print $1, $2, $3, $4}' | head -2) #only show first three as theres possibily many remove awk part to show all
+internal_ip=$(hostname -I | awk '{print $1, $2, $3}') #only show first three as theres possibily many remove awk part to show all
 external_ip=$(curl -s https://ipv4.icanhazip.com) #curl -s https://ipv6.icanhazip.com for ipv6 values
 date=$(date +"%A, %d %B %Y, %H:%M:%S")
 #os=$(uname -s)
