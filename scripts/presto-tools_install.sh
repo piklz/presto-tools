@@ -26,7 +26,7 @@
 #--------------------------------------------------------------------------------------------------
 # author		: piklz
 # github		: https://github.com/piklz/presto-tools.git
-# web		    : https://github.com/piklz/presto-tools.git
+# web		   	: https://github.com/piklz/presto-tools.git
 #
 #########################################################################################################################
 
@@ -37,6 +37,10 @@ set -e
 # Append common folders to the PATH to ensure that all basic commands are available.
 export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
+#get user name
+if [ -z "${USER}" ]; then
+    USER="$(id -un)"
+fi
 
 #CHECK IF WE HAVE EVER INSTALLED PRESTO /folder exists ?
 
@@ -80,7 +84,7 @@ git_pull_clone(){
 
 
 do_install_prestobashwelcome() {
-	if grep -Fxq ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" /home/pi/.bashrc ; then
+	if grep -Fxq ". /home/$USER/presto-tools/scripts/presto_bashwelcome.sh" /home/$USER/.bashrc ; then
 		# code if found
 		echo "Found presto Welcome login link in bashrc no changes needed -continue check if prestotools git installed.."
 
@@ -89,8 +93,8 @@ do_install_prestobashwelcome() {
 		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}presto Welcome Bash  (in bash.rc ) is missing ${clear}"
 		echo -e "${COL_LIGHT_RED}${INFO}${clear} ${COL_LIGHT_RED}lets add presto_bashwelcome  mod to .bashrc now >${clear}"
 		#bashwelcome add to bash.rc here
-		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/pi/.bashrc
-		echo ". /home/pi/presto-tools/scripts/presto_bashwelcome.sh" >> /home/pi/.bashrc
+		echo  "#presto-tools Added: presto_bash_welcome scripty" >> /home/$USER/.bashrc
+		echo ". /home/$USER/presto-tools/scripts/presto_bashwelcome.sh" >> /home/$USER/.bashrc
 	fi 
 }
 
