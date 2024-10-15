@@ -13,3 +13,5 @@ build/
 #.bash_aliases
 
 puma_monitor
+
+info_hidden.txt

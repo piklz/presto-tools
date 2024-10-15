@@ -82,18 +82,18 @@ COL_ITALIC="\e[1;3m"
 
 
 
-echo -e "${COL_GREEN}
-${COL_GREEN}  ██████╗ ██████╗ ███████╗███████╗████████╗ ██████╗
-${COL_GREEN}  ██╔══██╗██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔═══██╗
-${COL_GREEN}  ██████╔╝██████╔╝█████╗  ███████╗   ██║   ██║   ██║
-${COL_GREEN}  ██╔═══╝ ██╔══██╗██╔══╝  ╚════██║   ██║   ██║   ██║
-${COL_GREEN}  ██║     ██║  ██║███████╗███████║   ██║   ╚██████╔╝
-${COL_GREEN}  ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝    ╚═════╝ "
+echo -e "${COL_LIGHT_CYAN}
+${COL_LIGHT_CYAN}  ██████╗${COL_LIGHT_CYAN} ██████╗ ███████╗███████╗████████╗ ██████╗
+${COL_LIGHT_CYAN}  ██╔══██╗${COL_LIGHT_CYAN}██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔═══██╗
+${COL_LIGHT_CYAN}  ██████╔╝${COL_LIGHT_CYAN}██████╔╝█████╗  ███████╗   ██║   ██║   ██║
+${COL_LIGHT_CYAN}  ██╔═══╝ ${COL_LIGHT_CYAN}██╔══██╗██╔══╝  ╚════██║   ██║   ██║   ██║
+${COL_LIGHT_CYAN}  ██║     ${COL_LIGHT_CYAN}██║  ██║███████╗███████║   ██║   ╚██████╔╝
+${COL_LIGHT_CYAN}  ╚═╝     ${COL_LIGHT_CYAN}╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝    ╚═════╝ "
 
 #echo -e "\n"
 #echo -e "${COL_ITALIC}${COL_LIGHT_GREEN}HI ${COL_NC}\n"
 sleep 1
-echo -e "${COL_LIGHT_CYAN}\nI'm presto \n         (Perfectly Rationalized  Engine for \n                Superior Tidiness and Organization )${COL_NC}\n "
+echo -e "${COL_LIGHT_CYAN}\nI'm presto \n(Perfectly Rationalized  Engine for \n Superior Tidiness and Organization )${COL_NC}\n "
 
 #======================================================================================================================
 
@@ -108,8 +108,9 @@ if [[ $(timeout 4 curl -s https://wttr.in/London?format=4 ) ]] 2>/dev/null
   then #echo "This page exists."
       #short curl wttr.in/London?format="%l:+%c+%t+%m+%w"
       #curl -s wttr.in/London?format="%l:+%c+%C+%t+feels-like+%f+phase%m++humid+%h+🌞+%S+🌇+%s+\n" # this code in term runs as is
-      weather_info=$(curl -s https://wttr.in/London?format="%l:+%c+%C+%t+feels-like+%f+phase%m++humid+%h+🌞+%S+🌇+%s+\n")
+      weather_info=$(curl -s https://wttr.in/London?format="%l:+%c+%C+%t+feels-like+\n+%f+phase%m++humid+%h+🌞+%S+🌇+%s+\n")
   else echo -e "The weather [wttr.in] is downright now .. continue\n"
+    weather_info=" might be sunny somewhere?"
  fi
 
 
@@ -184,6 +185,7 @@ clock="🕰️"
 ram="RAM"
 weather="☁️"
 timer="⏳"
+fan="⚙️"
 
 icon_graphics=(
   "$laptop"
@@ -197,6 +199,7 @@ icon_graphics=(
   "$ram"
   "$weather"
   "$timer"
+  "fan"
 )
 
 
@@ -206,9 +209,9 @@ icon_graphics=(
 if is_command docker; then
     #echo -e "\n"
 echo -e "${COL_LIGHT_CYAN}
-             ╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
-              ║║║ ║║  ╠╩╗║╣ ╠╦╝
-             ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2 🐋
+╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
+ ║║║ ║║  ╠╩╗║╣ ╠╦╝
+═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2 🐋
 
 "
     #docker system df
@@ -226,25 +229,31 @@ fi
 # Get Raspberry Pi info
 cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp )
 gpu_temp=$(vcgencmd measure_temp |  awk '{split($0,numbers,"=")} {print numbers[2]}')
-internal_ip=$(hostname -I | awk '{print $1, $2, $3, $4}' | head -2) #only show first three as theres possibily many remove awk part to show all
+internal_ip=$(hostname -I | awk '{print $1, $2, $3}') #only show first three as theres possibily many remove awk part to show all
 external_ip=$(curl -s https://ipv4.icanhazip.com) #curl -s https://ipv6.icanhazip.com for ipv6 values
 date=$(date +"%A, %d %B %Y, %H:%M:%S")
 #os=$(uname -s)
 os=$(lsb_release  -d -r -c   | awk -F: '{split($2,a," "); printf a[1]" "  }';uname -s -m)
 uptime=$(uptime -p)
-memory_usage=$(free -h | grep Mem: | awk '{print $2, $3}')
+memory_usage=$(free -h | grep Mem: | awk '{print $3, $2}')
 running_processes=$(ps aux | wc -l)
 #weather_info=$(curl -s https://wttr.in/London?format=4) #code check timeout is above already suing this var
 
 # Get the SD card path
-sd_path=$(df -h | grep /dev/mmcblk0p1 | awk '{print $1}')
-
+#sd_path=$(df -h | grep /dev/mmcblk0p1 | awk '{print $1}')
 # Get the space used and left in the SD card filesystem
-sd_space_used=$(df -h $sd_path | grep -v Filesystem | awk '{print $3}')
-sd_space_left=$(df -h $sd_path | grep -v Filesystem | awk '{print $4}')
+#sd_space_used=$(df -h $sd_path | grep -v Filesystem | awk '{print $3}')
+#sd_space_left=$(df -h $sd_path | grep -v Filesystem | awk '{print $4}')
 
 # Print Raspberry Pi info in block tab mode
 echo -e ""
+
+
+
+
+# drive space info
+echo -e "DRIVE           INFO:"
+echo -e "${grey}$(df -h | grep /dev | awk '{print $0}') \n"
 
 # Trap errors so that the script can continue even if one of the commands fails
 trap '{ echo -e "${red}Error: $?" >&2; }' ERR
@@ -252,28 +261,37 @@ trap '{ echo -e "${red}Error: $?" >&2; }' ERR
 
 
 # Print the rest of the Raspberry Pi info
-echo -e " ${white}  ${calendar} Date and Time: ${date}"
-echo -e " ${blue}  Operating System: ${os}\n"
+echo -e "${white}  ${calendar} Date and Time: ${date}"
+echo -e "${blue}  Operating System: ${os}\n"
 
-echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col}$((cpu_temp/1000))°C"
-echo -e " ${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
-echo -e " ${red}  ${house}   Internal IP: ${internal_ip}"
-echo -e " ${green}  ${globe}   External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
-echo -e " ${grey}  ${clock}    Uptime: ${uptime}"
-echo -e " ${green}  ${ram}  Memory Usage: ${memory_usage}"
-echo -e " ${yellow}  ${timer}   Running Processes: ${running_processes}"
-echo -e " ${grey}  ${weather}    Weather: ${weather_info}"
+# pi5 fan check
+fan_speed=$(cat /sys/devices/platform/cooling_fan/hwmon/*/fan1_input)
+if [[ "$fan_speed" -gt 1000 ]]; then
+    echo -e " ${green} Fan is on ${fan} \n"
+else
+    echo -e " ${grey} Fan is off ${fan} \n"
+fi
+
+echo -e "${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col}$((cpu_temp/1000))°C"
+echo -e "${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
+echo -e "${red}  ${house}   Internal IP: ${internal_ip}"
+echo -e "${green}  ${globe}   External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
+echo -e "${grey}  ${clock}    Uptime: ${uptime}"
+echo -e "${green}  ${ram}  Memory Usage: ${magenta}${memory_usage}${grey}Total "
+echo -e "${yellow}  ${timer}   Running Processes: ${running_processes}"
+echo -e "${grey}  ${weather}    Weather: ${weather_info}"
 echo -e ""
 
 
+
 # Print the filesystem usage for `/dev/mmcblk0p1` if it exists
-if [[ ! -z "$sd_path" ]]; then
-  #echo -e " ${white}  ${filesystem}FILESYSTEM        used     Avail "
-  #echo -e " ${green}  ${sd_path} ${sd_space_used} used, ${sd_space_left} left"
-  echo -e "${grey} $(df -h /  | awk '{print ("  ",$0)}') \n"
-else
-  echo -e " ${magenta}  SD card not found"
-fi
+#if [[ ! -z "$sd_path" ]]; then
+#  #echo -e " ${white}  ${filesystem}FILESYSTEM        used     Avail "
+#  #echo -e " ${green}  ${sd_path} ${sd_space_used} used, ${sd_space_left} left"
+#  echo -e "${grey} $(df -h /  | awk '{print ("  ",$0)}') \n"
+#else
+#  echo -e " ${magenta}  SD card not found"
+#fi
 
 
 
