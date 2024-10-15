@@ -253,7 +253,7 @@ echo -e ""
 
 # drive space info
 echo -e "DRIVE           INFO:"
-echo -e "${grey}$(df -h | grep /dev | awk '{print $0}') \n"
+echo -e "${grey}$(df -h | grep /dev/ | awk '{print $0}') \n"
 
 # Trap errors so that the script can continue even if one of the commands fails
 trap '{ echo -e "${red}Error: $?" >&2; }' ERR
