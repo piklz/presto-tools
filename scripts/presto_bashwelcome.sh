@@ -264,7 +264,6 @@ trap '{ echo -e "${red}Error: $?" >&2; }' ERR
 echo -e "${white}  ${calendar} Date and Time: ${date}"
 echo -e "${blue}  Operating System: ${os}\n"
 
-<<<<<<< HEAD
 # pi5 fan check
 fan_speed=$(cat /sys/devices/platform/cooling_fan/hwmon/*/fan1_input)
 if [[ "$fan_speed" -gt 1000 ]]; then
@@ -281,16 +280,6 @@ echo -e "${grey}  ${clock}    Uptime: ${uptime}"
 echo -e "${green}  ${ram}  Memory Usage: ${magenta}${memory_usage}${grey}Total "
 echo -e "${yellow}  ${timer}   Running Processes: ${running_processes}"
 echo -e "${grey}  ${weather}    Weather: ${weather_info}"
-=======
-echo -e " ${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col}$((cpu_temp/1000))°C"
-echo -e " ${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
-echo -e " ${red}  ${house}   Internal IP: ${internal_ip}"
-echo -e " ${green}  ${globe}   External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
-echo -e " ${grey}  ${clock}   Uptime: ${uptime}"
-echo -e " ${green}  ${ram}  Memory Usage: ${memory_usage}"
-echo -e " ${yellow}  ${timer}   Running Processes: ${running_processes}"
-echo -e " ${grey}  ${weather}   Weather: ${weather_info}"
->>>>>>> 7044cca5b102dfe03c186cc0ab4ac9bf76ac30f4
 echo -e ""
 
 
