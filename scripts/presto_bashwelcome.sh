@@ -226,6 +226,47 @@ else
 
 fi
 
+
+# Function to display the RAM usage as a graphical bar
+ram_usage_bar() {
+    # Get total and used RAM (in MB)
+    total_ram=$(free -m | awk '/Mem:/ {print $2}')
+    used_ram=$(free -m | awk '/Mem:/ {print $3}')
+
+    # Calculate percentage used
+    percentage=$((used_ram * 100 / total_ram))
+
+    # Set bar length
+    bar_length=25
+
+    # Calculate filled and empty portions
+    filled_length=$((percentage * bar_length / 100))
+    empty_length=$((bar_length - filled_length))
+
+    # Create the bar with custom characters
+    filled_bar=$(printf "%0.s▓" $(seq 1 $filled_length))
+    empty_bar=$(printf "%0.s░" $(seq 1 $empty_length))
+
+    # Determine color based on usage percentage
+    if [ $percentage -lt 50 ]; then
+        color="\033[32m"  # Green for <50%
+    elif [ $percentage -lt 75 ]; then
+        color="\033[33m"  # Yellow for 50%-74%
+    else
+        color="\033[31m"  # Red for 75%+
+    fi
+
+    # Reset color
+    reset="\033[0m"
+
+    # Print the bar with the percentage
+    echo -e "RAM Usage: ${color}[$filled_bar${grey}$empty_bar] $percentage%${reset} ($used_ram MB / $total_ram MB)"
+
+}
+
+# Call the function
+#ram_usage_bar
+
 # Get Raspberry Pi info
 cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp )
 gpu_temp=$(vcgencmd measure_temp |  awk '{split($0,numbers,"=")} {print numbers[2]}')
@@ -272,7 +313,17 @@ else
     echo -e " ${grey} Fan is off ${fan} \n"
 fi
 
-echo -e "${cyan}  ${laptop} ${grey}  CPU Temp: ${no_col}$((cpu_temp/1000))°C"
+if [[ "$((cpu_temp/1000))" -lt 50 ]]; then 
+
+   echo -e "${cyan}  ${laptop} ${grey}  CPU Temp: ${green}$((cpu_temp/1000))°C"
+
+elif [[ "$((cpu_temp/1000))" -lt 62 ]]; then
+
+   echo -e "${cyan}  ${laptop} ${grey}  CPU Temp: ${yellow}$((cpu_temp/1000))°C"
+
+else
+   echo -e "${cyan}  ${laptop} ${grey}  CPU Temp: ${red}$((cpu_temp/1000))°C"
+fi
 echo -e "${cyan}  ${gpu} ${grey} GPU Temp:${no_col} ${gpu_temp}"
 echo -e "${red}  ${house}   Internal IP: ${internal_ip}"
 echo -e "${green}  ${globe}   External IP: ${lgt_green_inv} ${external_ip} ${no_col}"
