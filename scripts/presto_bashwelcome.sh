@@ -377,21 +377,21 @@ fi
 
 if [[ "$((cpu_temp/1000))" -lt 50 ]]; then 
 
-   echo -e "${cyan}  ${laptop} ${green}   CPU Temp: ${green}$((cpu_temp/1000))°C"
-   echo -e "${cyan}  ${gpu} ${green} GPU Temp:${no_col} ${green}${gpu_temp}"
+   echo -e "${cyan}  ${laptop}${green}   CPU Temp: ${green}$((cpu_temp/1000))°C"
+   echo -e "${cyan}  ${gpu}${green}  GPU Temp:${no_col}${green}${gpu_temp}"
 elif [[ "$((cpu_temp/1000))" -lt 62 ]]; then
 
-   echo -e "${cyan}  ${laptop} ${yellow}   CPU Temp: ${yellow}$((cpu_temp/1000))°C"
-   echo -e "${cyan}  ${gpu} ${yellow} GPU Temp:${no_col} ${yellow}${gpu_temp}"
+   echo -e "${cyan}  ${laptop}${yellow}   CPU Temp: ${yellow}$((cpu_temp/1000))°C"
+   echo -e "${cyan}  ${gpu}${yellow}  GPU Temp:${no_col} ${yellow}${gpu_temp}"
 else
-   echo -e "${cyan}  ${laptop} ${red}   CPU Temp: ${red}$((cpu_temp/1000))°C"
-   echo -e "${cyan}  ${gpu} ${red} GPU Temp:${no_col} ${red}${gpu_temp}"
+   echo -e "${cyan}  ${laptop}${red}   CPU Temp: ${red}$((cpu_temp/1000))°C"
+   echo -e "${cyan}  ${gpu}${red}  GPU Temp:${no_col} ${red}${gpu_temp}"
 fi
-echo -e "${blue}  ${house}${grey_dim}    Internal IP: ${internal_ip}${no_col}"
-echo -e "${blue}  ${globe}${grey_dim}    External IP: ${external_ip}${no_col}"
-echo -e "${white}  ${clock}   ${yellow} Uptime: ${uptime}"
+echo -e "${blue}  ${house}${grey_dim}   Internal IP: ${internal_ip}${no_col}"
+echo -e "${blue}  ${globe}${grey_dim}   External IP: ${external_ip}${no_col}"
+echo -e "${white}  ${clock}${yellow}   Uptime: ${uptime}"
 echo -e "${yellow}  ${timer}   Running Processes: ${running_processes}"
-echo -e "${green}  ${ram}${no_col}  ${memory_usage}${no_col} "
+echo -e "${green}  ${ram}${no_col}   ${memory_usage}${no_col} "
 echo -e "${white}  ${weather}   Weather: ${weather_info}"
 echo -e ""
 
