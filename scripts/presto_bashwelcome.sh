@@ -310,8 +310,8 @@ raspberry_model=$(cat /proc/device-tree/compatible | awk -v RS='\0' 'NR==1')
 
 #------ Print Raspberry Pi info in block tab mode
 
-echo -e "${COL_PINK}
-  PI 🍓${COL_PINK}Model:  ${raspberry_model}"
+echo -e "${magenta}
+  PI 🍓${magenta}Model:  ${raspberry_model}"
 
 #echo -e ""
 
@@ -362,13 +362,13 @@ if [[ -n "$fan_input_path" ]]; then
     # Fan input file exists, check fan speed
     fan_speed=$(cat "$fan_input_path")
     if [[ "$fan_speed" -gt 1000 ]]; then
-        echo -e "  ${fan} ${green}   Fan is on ${fan} (${fan_speed} RPM)${no_col} "
+        echo -e "  ${fan}${green}   Fan is on ${fan} (${fan_speed} RPM)${no_col} "
     else
-        echo -e "  ${fan} ${grey}   Fan is off (${fan_speed} RPM)${no_col} "
+        echo -e "  ${fan}${grey}   Fan is off (${fan_speed} RPM)${no_col} "
     fi
 else
     # Fan input file doesn't exist
-    echo -e "  ${fan} ${yellow}   No fan detected.${no_col} "
+    echo -e "  ${fan}${yellow}   No fan detected.${no_col} "
 fi
 
 
