@@ -310,8 +310,8 @@ raspberry_model=$(cat /proc/device-tree/compatible | awk -v RS='\0' 'NR==1')
 
 #------ Print Raspberry Pi info in block tab mode
 
-echo -e "${COL_PINK}
-  PI 🍓${COL_PINK}Model:  ${raspberry_model}"
+echo -e "${magenta}
+  PI 🍓${magenta}Model:  ${raspberry_model}"
 
 #echo -e ""
 
