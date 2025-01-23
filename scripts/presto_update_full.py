@@ -36,7 +36,15 @@
 ##################################################################################################
 
 import os,sys,subprocess
-os.chdir("/home/pi/presto/scripts/")
+
+# --- checkfor current user
+if [ -z "${USER}" ]; then
+    USER="$(id -un)"
+fi
+
+
+
+os.chdir("/home/$USER/presto/scripts/")
 ##ping = subprocess.Popen("./update.sh",stdout = subprocess.PIPE,stderr = subprocess.PIPE,shell=True) #quietver
 update_ping = subprocess.Popen("./update.sh",shell=True)						    #verbosever
 update_out = update_ping.communicate()[0]
