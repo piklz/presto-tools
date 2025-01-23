@@ -362,13 +362,13 @@ if [[ -n "$fan_input_path" ]]; then
     # Fan input file exists, check fan speed
     fan_speed=$(cat "$fan_input_path")
     if [[ "$fan_speed" -gt 1000 ]]; then
-        echo -e "  ${fan} ${green}   Fan is on ${fan} (${fan_speed} RPM)${no_col} "
+        echo -e "  ${fan}${green}   Fan is on ${fan} (${fan_speed} RPM)${no_col} "
     else
-        echo -e "  ${fan} ${grey}   Fan is off (${fan_speed} RPM)${no_col} "
+        echo -e "  ${fan}${grey}   Fan is off (${fan_speed} RPM)${no_col} "
     fi
 else
     # Fan input file doesn't exist
-    echo -e "  ${fan} ${yellow}   No fan detected.${no_col} "
+    echo -e "  ${fan}${yellow}   No fan detected.${no_col} "
 fi
 
 
