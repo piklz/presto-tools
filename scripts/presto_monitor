@@ -1,10 +1,30 @@
 #!/bin/bash
 # -----------------------------------------------
-# Version: 0.1
-# Discord: 
-# GitHub:
-# https://github.com/piklz
+# Docker Container Status Script
+# Version: 1.0
+# Author: piklz
+# GitHub: https://github.com/piklz
 # -----------------------------------------------
+
+# Colors for styling
+RESET=$(tput sgr0)
+BOLD=$(tput bold)
+GREEN=$(tput setaf 2)
+RED=$(tput setaf 1)
+YELLOW=$(tput setaf 3)
+CYAN=$(tput setaf 6)
+WHITE=$(tput setaf 7)
+
+# Function to create a stylish header
+function print_header() {
+    echo -e "${CYAN}"
+    echo "==========================================="
+    echo "      🌟 Docker Container Stats 🌟       "
+    echo "==========================================="
+    echo -e "${RESET}"
+}
+
+# Calculate stats
 healthy=$(docker ps | grep -o 'healthy' | wc -l)
 unhealthy=$(docker ps | grep -o 'unhealthy' | wc -l)
 running=$(docker container ls -a | grep -o 'Up' | wc -l)
@@ -12,10 +32,28 @@ created=$(docker container ls -a | grep -o 'Created' | wc -l)
 stopped=$(docker container ls -a | grep -o 'Exited' | wc -l)
 total=$(($running + $created + $stopped))
 
-# Health: Healthy / Unhealthy
-# Running: Running / Created / Stopped
-echo -e "#########################"
-echo -e "Docker container stats:"
-echo -e "Health: \e[32m$healthy \e[97m/ \e[31m$unhealthy\e[0m"
-echo -e "Running: \e[32m$running \e[97m/ \e[96m$created \e[97m/ \e[31m$stopped\e[0m"
-echo -e "#########################"
+# Print header
+print_header
+
+# Stylish stats table
+echo -e "${BOLD}Docker Container Statistics:${RESET}"
+printf "%-20s: ${GREEN}%s${RESET}\n" "Healthy" "$healthy"
+printf "%-20s: ${RED}%s${RESET}\n" "Unhealthy" "$unhealthy"
+printf "%-20s: ${GREEN}%s${RESET}\n" "Running" "$running"
+printf "%-20s: ${YELLOW}%s${RESET}\n" "Created" "$created"
+printf "%-20s: ${RED}%s${RESET}\n" "Stopped" "$stopped"
+printf "%-20s: ${CYAN}%s${RESET}\n" "Total Containers" "$total"
+
+# Suggest action based on stats
+if [[ $unhealthy -gt 0 ]]; then
+    echo -e "\n${RED}⚠️ Warning:${RESET} $unhealthy container(s) are unhealthy. Consider investigating."
+else
+    echo -e "\n${GREEN}✅ All containers are healthy.${RESET}"
+fi
+
+# Horizontal separator
+echo -e "${CYAN}-------------------------------------------${RESET}"
+
+# Add an optional banner or footer
+echo -e "Visit ${BOLD}${CYAN}https://github.com/piklz${RESET} for updates!"
+echo -e "${CYAN}===========================================${RESET}"
