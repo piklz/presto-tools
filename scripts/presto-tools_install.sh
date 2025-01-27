@@ -26,7 +26,7 @@
 #--------------------------------------------------------------------------------------------------
 # author		: piklz
 # github		: https://github.com/piklz/presto-tools.git
-# web		    : https://github.com/piklz/presto-tools.git
+# web		   	: https://github.com/piklz/presto-tools.git
 #
 #########################################################################################################################
 
@@ -37,6 +37,10 @@ set -e
 # Append common folders to the PATH to ensure that all basic commands are available.
 export PATH+=':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
+#get user name
+if [ -z "${USER}" ]; then
+    USER="$(id -un)"
+fi
 
 #CHECK IF WE HAVE EVER INSTALLED PRESTO /folder exists ?
 
