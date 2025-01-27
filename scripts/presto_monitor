@@ -1,7 +1,7 @@
 #!/bin/bash
 # -----------------------------------------------
 # Docker Container Status Script
-# Version: 1.0
+# Version: 1.1
 # Author: piklz
 # GitHub: https://github.com/piklz
 # -----------------------------------------------
@@ -45,7 +45,9 @@ printf "%-20s: ${RED}%s${RESET}\n" "Stopped" "$stopped"
 printf "%-20s: ${CYAN}%s${RESET}\n" "Total Containers" "$total"
 
 # Suggest action based on stats
-if [[ $unhealthy -gt 0 ]]; then
+if [[ $running -eq 0 ]]; then
+    echo -e "\n${YELLOW}⚠️ No containers are currently running. Start your containers to monitor them.${RESET}"
+elif [[ $unhealthy -gt 0 ]]; then
     echo -e "\n${RED}⚠️ Warning:${RESET} $unhealthy container(s) are unhealthy. Consider investigating."
 else
     echo -e "\n${GREEN}✅ All containers are healthy.${RESET}"
