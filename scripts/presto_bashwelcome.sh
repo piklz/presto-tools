@@ -190,7 +190,7 @@ if [[ $(timeout 4 curl -s https://wttr.in/London?format=4 ) ]] 2>/dev/null
 
 
 
-# --- 'is it a command?' helper for if-then returns 1 or 0
+# --- 'is it a command?' helper . returns 1 or 0
 is_command() {
     # Checks to see if the given command (passed as a string argument) exists on the system.
     # The function returns 0 (success) if the command exists, and 1 if it doesn't.
@@ -231,9 +231,8 @@ if is_command docker; then
 #  ╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
 #   ║║║ ║║  ╠╩╗║╣ ╠╦╝
 #  ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2 🐋"
-
+compose_version = $(docker compose version | awk '{print $4}')
 echo -e "${cyan}
-  DOCKER COMPOSE V2 INFO🐋"
 
     #docker system df
     # check docker exists and if so show the file system here
@@ -378,7 +377,7 @@ fi
 if [[ "$((cpu_temp/1000))" -lt 50 ]]; then 
 
    echo -e "${cyan}  ${laptop}${green}   CPU Temp: ${green}$((cpu_temp/1000))°C"
-   echo -e "${cyan}  ${gpu}${green}  GPU Temp:${no_col}${green}${gpu_temp}"
+   echo -e "${cyan}  ${gpu}${green}  GPU Temp: ${no_col}${green}${gpu_temp}"
 elif [[ "$((cpu_temp/1000))" -lt 62 ]]; then
 
    echo -e "${cyan}  ${laptop}${yellow}   CPU Temp: ${yellow}$((cpu_temp/1000))°C"
