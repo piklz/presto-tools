@@ -231,8 +231,8 @@ if is_command docker; then
 #  ╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
 #   ║║║ ║║  ╠╩╗║╣ ╠╦╝
 #  ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2 🐋"
-compose_version = $(docker compose version | awk '{print $4}')
-echo -e "${cyan}
+    compose_version=$(docker compose version | awk '{print $4}')
+echo -e "${cyan}  DOCKER STACK INFO (Compose:$compose_version) 🐋"
 
     #docker system df
     # check docker exists and if so show the file system here
