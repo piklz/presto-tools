@@ -125,14 +125,14 @@ group_colors=(  #grouped use: eg.  ' selected_color="${group_colors[4]}" # green
 
 # Set icon graphics
 laptop="💻"
-gpu="GPU"
+gpu="🎮"
 house="🏠"
 globe="🌐"
 calendar="📅"
-os="OS"
+os="☄️"
 filesystem="💾"
 clock="🕰️"
-ram="RAM"
+ram="🐏"
 weather="☁️"
 timer="⏳"
 fan="⚙️"
@@ -349,6 +349,10 @@ trap '{ echo -e "${laptop}${red}Error: $?" >&2; }' ERR
 
 # --- Print Raspberry Pi info STARTS HERE
 
+
+echo -e ""
+echo -e "  ${white}Raspberry Pi System Information"
+echo -e "  ${grey_dim}----------------------------------------${no_col}"
 
 echo -e "${white}  Operating System: ${blue}${os}"
 
