@@ -388,7 +388,7 @@ else
 fi
 echo -e "${blue}  ${house}${grey_dim}   Internal IP: ${internal_ip}${no_col}"
 echo -e "${blue}  ${globe}${grey_dim}   External IP: ${external_ip}${no_col}"
-echo -e "${white}  ${clock}${yellow}   Uptime: ${uptime}"
+echo -e "${white}  ${clock}${yellow}  Uptime: ${uptime}"
 echo -e "${yellow}  ${timer}   Running Processes: ${running_processes}"
 echo -e "${green}  ${ram}${no_col}  ${memory_usage}${no_col} "
 echo -e "${white}  ${weather}   Weather: ${weather_info}"
