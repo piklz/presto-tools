@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 import subprocess
 import sys
-import time
 import os
 from datetime import datetime
-import psutil
-from tqdm import tqdm
 
 # --- Configuration ---
 LOG_DIR = f"/home/{os.environ['USER']}/presto/logs/"
@@ -40,8 +37,6 @@ def progress_bar(current, total):
     sys.stdout.write(f"\r|{bar}| {current}/{total} tasks completed")
     sys.stdout.flush()
 
-
-
 # --- Change Directory and Check User ---
 try:
     current_user = os.environ['USER']
@@ -53,7 +48,6 @@ except KeyError:
 except FileNotFoundError:
     log_and_print("Error: Directory '/home/{current_user}/presto/scripts/' does not exist.")
     sys.exit(1)
-
 
 def run_command_with_retries(cmd, capture_output=False):
     """Run a shell command with retries."""
