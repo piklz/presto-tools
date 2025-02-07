@@ -172,6 +172,7 @@ echo -e "${cyan}\n  Perfectly Rationalized Engine for Superior Tidiness\n       
 #======================================================================================================================
 
 
+<<'###BLOCK-COMMENT'
 # --- Lets fetch weather +  timeout  to fail /gracefully and move on 
 
 # get weather  :    wttr.in/London?format="%l:+%c+%t+%m+%w"  
@@ -187,6 +188,22 @@ if [[ $(timeout 4 curl -s https://wttr.in/London?format=4 ) ]] 2>/dev/null
     weather_info=" might be sunny somewhere?"
  fi
 
+###BLOCK-COMMENT
+
+
+
+# --- CHECK WEATHER URL AND TIMEOUT IF DEAD LINK or busy
+weather_info=$(timeout 4 curl -s https://wttr.in/London?format="%l:+%c+%C+%t+feels-like+\n+%f+phase%m++humid+%h+🌞+%S+🌇+%s+\n" 2>/dev/null)
+
+if [[ -n "$weather_info" ]]; then
+  echo ""
+  #echo -e "☁️"
+else
+  echo -e "The weather [wttr.in] is downright now .. continue\n"
+  weather_info=" might be sunny somewhere?"
+fi
+
+#echo "$weather_info"
 
 
 
@@ -232,8 +249,8 @@ if is_command docker; then
 #   ║║║ ║║  ╠╩╗║╣ ╠╦╝
 #  ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2 🐋"
     compose_version=$(docker compose version | awk '{print $4}')
-echo -e "${cyan}  DOCKER STACK INFO (Compose:$compose_version) 🐋"
-
+#echo -e "${cyan}  DOCKER STACK INFO (Compose:$compose_version) 🐋"
+echo -e "${cyan}  DOCKER STACK INFO 🐋"
     #docker system df
     # check docker exists and if so show the file system here
     docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read type total active size reclaimable; do printf "  %-12s ${cyan}%-8s ${magenta}%-8s ${white}%-8s ${green}%-8s\n" "$type" "$total" "$active" "$size" "$reclaimable";done)
@@ -344,6 +361,74 @@ echo -e ""
 
 # Trap errors so that the script can continue even if one of the commands fails
 trap '{ echo -e "${laptop}${red}Error: $?" >&2; }' ERR
+
+
+
+
+# --- notify if theres a newer compose plugin out on github then offer to update
+
+# Function to compare versions (returns "newer" if latest > current)
+compare_versions() {
+  awk -v current="$1" -v latest="$2" '
+  BEGIN {
+    split(current, cur_parts, ".")
+    split(latest, lat_parts, ".")
+    len = length(cur_parts) > length(lat_parts) ? length(cur_parts) : length(lat_parts)
+    for (i = 1; i <= len; i++) {
+      cur_part = (cur_parts[i] == "" ? 0 : cur_parts[i])
+      lat_part = (lat_parts[i] == "" ? 0 : lat_parts[i])
+      if (cur_part < lat_part) { print "newer"; exit }
+      if (cur_part > lat_part) { print "older"; exit }
+    }
+    print "equal"
+  }'
+}
+
+if [[ $(timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest) ]]  2>/dev/null
+    then
+
+        # ---- Docker Compose Version Check ----
+        CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2-)
+        #CURRENT_COMPOSE_VERSION='2.22.2' #debug
+        LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
+        LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
+
+        COMPOSE_UPDATE=$(compare_versions "$CURRENT_COMPOSE_VERSION" "$LATEST_COMPOSE_VERSION")
+
+        # ---- Docker Engine Version Check ----
+        CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
+        #CURRENT_DOCKER_VERSION='22.2.4'#debug
+        LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
+        LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#v}"
+
+        DOCKER_UPDATE=$(compare_versions "$CURRENT_DOCKER_VERSION" "$LATEST_DOCKER_VERSION")
+
+        # ---- Show update notifications ----
+        UPDATE_NEEDED=0
+
+        if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
+          echo -e "${yellow}  ✅ A newer version of Docker Compose is available (v$LATEST_COMPOSE_VERSION).${no_col}"
+          UPDATE_NEEDED=1
+        fi
+
+        if [[ "$DOCKER_UPDATE" == "newer" ]]; then
+          echo -e "${yellow}  ✅ A newer version of Docker Engine  is available (v$LATEST_DOCKER_VERSION).${no_col}"
+          UPDATE_NEEDED=1
+        fi
+
+        if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
+          echo -e "${green}  ✅ Docker and Docker Compose are already up to date 🐋.${no_col}"
+          #exit 0
+        fi
+
+    else
+        echo -e "${red}  Docker ver checker down right now .. continue try login later"
+    fi
+
+    if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
+      echo -e "${magenta}  ✅ Run PRESTO_ENGINE_UPDATE to update Docker/Compose Engine.${no_col}"
+      #exit 0
+    fi
 
 
 
