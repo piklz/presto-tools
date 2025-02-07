@@ -60,7 +60,7 @@ DOCKER_UPDATE=$(compare_versions "$CURRENT_DOCKER_VERSION" "$LATEST_DOCKER_VERSI
 UPDATE_NEEDED=0
 
 if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
-  echo -e "${yellow}✅ A newer version of Docker Compose (${red}v$CURRENT_DOCKER_VERSION${no_col}) is available (${green}v$LATEST_COMPOSE_VERSION).${no_col}"
+  echo -e "${yellow}✅ A newer version of Docker Compose (${red}v$CURRENT_COMPOSE_VERSION${no_col}) is available (${green}v$LATEST_COMPOSE_VERSION).${no_col}"
   UPDATE_NEEDED=1
 fi
 
