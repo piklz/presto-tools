@@ -167,7 +167,7 @@ icon_graphics=( #grouped use: eg.  ' selected_gfx="${icon_graphics[3]}" # globe 
 #echo -e "\n"
 #echo -e "${italic}${lgt_green}HI ${no_col}\n"
 sleep 1
-echo -e "${cyan}\n  Perfectly Rationalized Engine for Superior Tidiness\n                         and \n                     Organization ${no_col}\n "
+#echo -e "${cyan}\n  Perfectly Rationalized Engine for Superior Tidiness\n                         and \n                     Organization ${no_col}\n "
 #echo -e "  https://github.com/piklz/presto-tools"
 #======================================================================================================================
 
