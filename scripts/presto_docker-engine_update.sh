@@ -41,16 +41,16 @@ compare_versions() {
 }
 
 # ---- Docker Compose Version Check ----
-#CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2-)
-CURRENT_COMPOSE_VERSION='2.22.2' #debug
+CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2-)
+#CURRENT_COMPOSE_VERSION='2.22.2' #debug
 LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
 LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
 
 COMPOSE_UPDATE=$(compare_versions "$CURRENT_COMPOSE_VERSION" "$LATEST_COMPOSE_VERSION")
 
 # ---- Docker Engine Version Check ----
-#CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
-CURRENT_DOCKER_VERSION='22.2.4' #debug
+CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
+#CURRENT_DOCKER_VERSION='22.2.4' #debug
 LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
 LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#v}"
 
