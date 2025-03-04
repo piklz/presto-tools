@@ -326,7 +326,7 @@ if [[ $(timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/l
     if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
       echo -e "${magenta}  ✅ Run PRESTO_ENGINE_UPDATE to update Docker/Compose Engine.${no_col}"
       #exit 0
-
+fi
 
 # Function to display the RAM usage as a graphical bar
 ram_usage_bar() {
