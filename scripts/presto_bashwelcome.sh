@@ -92,6 +92,7 @@ green="\e[32m"
 yellow="\e[33m"
 blue="\e[34m"
 magenta="\e[35m"
+magenta_dim="\e[35;2m"
 grey="\e[1;30m"
 grey_dim="\e[2;30m"
 lgt_red="\e[1;31m"
@@ -117,6 +118,7 @@ group_colors=(  #grouped use: eg.  ' selected_color="${group_colors[4]}" # green
   "$yellow"
   "$blue"
   "$magenta"
+  "$magenta_dim"
   "$grey"
   "$grey_dim"
   "$lgt_green"
@@ -131,12 +133,12 @@ globe="🌐"
 calendar="📅"
 os="☄️"
 filesystem="💾"
-clock="🕰️"
+clock="🕛"
 ram="🐏"
-weather="☁️"
+weather="🌘"
 timer="⏳"
-fan="⚙️"
-
+fan="🔄"
+wind="🌀"
 
 icon_graphics=( #grouped use: eg.  ' selected_gfx="${icon_graphics[3]}" # globe ''
   "$laptop"
@@ -151,6 +153,7 @@ icon_graphics=( #grouped use: eg.  ' selected_gfx="${icon_graphics[3]}" # globe 
   "$weather"
   "$timer"
   "fan"
+  "wind"
 )
 
 
@@ -193,7 +196,7 @@ if [[ $(timeout 4 curl -s https://wttr.in/London?format=4 ) ]] 2>/dev/null
 
 
 # --- CHECK WEATHER URL AND TIMEOUT IF DEAD LINK or busy
-weather_info=$(timeout 4 curl -s https://wttr.in/London?format="%l:+%c+%C+%t+feels-like+\n+%f+phase%m++humid+%h+🌞+%S+🌇+%s+\n" 2>/dev/null)
+weather_info=$(timeout 4 curl -s https://wttr.in/London?format="%l:+%c+%C+%t+feels-like+%f+\n+++++++++++++++++++phase%m++humid+%h+🌞+%S+🌇+%s+\n" 2>/dev/null)
 
 if [[ -n "$weather_info" ]]; then
   echo ""
@@ -315,7 +318,7 @@ if [[ $(timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/l
         fi
 
         if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
-          echo -e "${green}  ✅ Docker and Docker Compose are already up to date 🐋.${no_col}"
+          echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
           #exit 0
         fi
 
@@ -328,6 +331,8 @@ if [[ $(timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/l
       #exit 0
 fi
 
+
+
 # Function to display the RAM usage as a graphical bar
 ram_usage_bar() {
     # Get total and used RAM (in MB)
@@ -338,7 +343,7 @@ ram_usage_bar() {
     percentage=$((used_ram * 100 / total_ram))
 
     # Set bar length
-    bar_length=18
+    bar_length=14
 
     # Calculate filled and empty portions
     filled_length=$((percentage * bar_length / 100))
@@ -361,7 +366,7 @@ ram_usage_bar() {
     bar_reset="\033[0m"
 
     # Print the bar with the percentage
-    echo -e "Usage: ${bar_color}[$filled_bar${grey_dim}$empty_bar] $percentage%${bar_reset} ($used_ram MB / $total_ram MB)"
+    echo -e "${bar_color}[$filled_bar${grey_dim}$empty_bar] $percentage%${bar_reset} ($used_ram MB / $total_ram MB)"
 
 } # Call the function #ram_usage_bar
 
@@ -373,7 +378,8 @@ cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp )
 gpu_temp=$(vcgencmd measure_temp |  awk '{split($0,numbers,"=")} {print numbers[2]}')
 internal_ip=$(hostname -I | awk '{print $1, $2, $3}') #only show first three as theres possibily many remove awk part to show all
 external_ip=$(curl -s https://ipv4.icanhazip.com) #curl -s https://ipv6.icanhazip.com for ipv6 values
-date=$(date +"%A, %d %B %Y, %H:%M:%S")
+timezone=$(timedatectl | grep "Time zone" | awk '{print $3$4$5}')
+date=$(date +"%A, %d %B %Y,%H:%M:%S "$timezone)
 #os=$(uname -s)
 os=$(lsb_release  -d -r -c   | awk -F: '{split($2,a," "); printf a[1]" "  }';uname -s -m)
 uptime=$(uptime -p)
@@ -387,6 +393,7 @@ raspberry_model=$(cat /proc/device-tree/compatible | awk -v RS='\0' 'NR==1')
 
 
 
+print_pi_drive_info() {
 
 #------ Print Raspberry Pi info in block tab mode
 
@@ -396,7 +403,7 @@ echo -e "${magenta}
 #echo -e ""
 
 # Print header
-echo -e "  ${grey_dim}DRIVE        HDSIZE   USED   FREE   USE%"
+echo -e "  ${grey}DRIVE        HDSIZE   USED   FREE   USE%"
 
 # Loop through 'df' output and color code usage
 df -h --output=source,size,used,avail,pcent | grep "^/dev/" | while read -r line; do
@@ -407,6 +414,7 @@ df -h --output=source,size,used,avail,pcent | grep "^/dev/" | while read -r line
   free=$(echo "$line" | awk '{print $4}')
   usep=$(echo "$line" | awk '{print $5}' | tr -d '%')
 
+  local color
   # Set color based on usage percentage
   if [ "$usep" -lt 40 ]; then
     color=$green
@@ -420,13 +428,15 @@ df -h --output=source,size,used,avail,pcent | grep "^/dev/" | while read -r line
 printf "  ${color}%-12s %-8s %-6s %-6s %-5s${no_col}\n" "$drive" "$hdsize" "$used" "$free" "$usep%"
 done
 echo -e ""
-
+}
 
 
 # Trap errors so that the script can continue even if one of the commands fails
 trap '{ echo -e "${laptop}${red}Error: $?" >&2; }' ERR
 
 
+
+# <<'###BLOCK-COMMENT'
 
 
 
@@ -435,12 +445,19 @@ trap '{ echo -e "${laptop}${red}Error: $?" >&2; }' ERR
 
 
 echo -e ""
-echo -e "  ${white}Raspberry Pi System Information"
-echo -e "  ${grey_dim}----------------------------------------${no_col}"
+#echo -e "  ${white}Raspberry Pi System Information"
+printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "Raspberry Pi System Information"
 
-echo -e "${white}  Operating System: ${blue}${os}"
+#echo -e "  ${grey_dim}----------------------------------------${no_col}"
+printf "  %-3s ${white}%-13s${no_col} %s" "----------------------------------------"
 
-echo -e "${white}  ${calendar}   ${date}"
+print_pi_drive_info #run command to show drive space info
+
+
+printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n"   "Operating System:"  "${os}"
+
+
+printf "  %-3s ${white}%-13s${no_col} ${white}%s\n" "${calendar}"   "${date}"
 
 # --- FAN info - Check if the fan input file exists first and show RPM if exists
 fan_input_path=$(find /sys/devices/platform/ -name "fan1_input" 2>/dev/null)
@@ -449,49 +466,43 @@ if [[ -n "$fan_input_path" ]]; then
     # Fan input file exists, check fan speed
     fan_speed=$(cat "$fan_input_path")
     if [[ "$fan_speed" -gt 1000 ]]; then
-        echo -e "  ${fan}${green}   Fan is on ${fan} (${fan_speed} RPM)${no_col} "
+        
+        printf "  %-3s ${green}%-13s${no_col} ${green}%s\n" "${fan}"  "Fan is on" "${wind}${fan_speed} RPM"
     else
-        echo -e "  ${fan}${grey}   Fan is off (${fan_speed} RPM)${no_col} "
+        
+        printf "  %-3s ${grey}%-13s${no_col} ${grey}%s\n" "${fan}"  "Fan is off" "${wind}${fan_speed} RPM"
     fi
 else
     # Fan input file doesn't exist
-    echo -e "  ${fan}${yellow}   No fan detected.${no_col} "
+    
+    printf "  %-3s ${yellow}%-13s${no_col} \n" "{$fan}" "No Fan Detected"
 fi
 
+# ###BLOCK-COMMENT
 
-# --- Print the rest of the Raspberry Pi info
+
 
 
 if [[ "$((cpu_temp/1000))" -lt 50 ]]; then 
-
-   echo -e "${cyan}  ${laptop}${green}   CPU Temp: ${green}$((cpu_temp/1000))°C"
-   echo -e "${cyan}  ${gpu}${green}   GPU Temp: ${no_col}${green}${gpu_temp}"
+   printf "  %-3s ${cyan}%-13s${no_col} ${green}%d°C\n"  "${laptop}"  "CPU Temp:" "$((cpu_temp/1000))"
+   printf "  %-3s ${cyan}%-13s${no_col} ${green}%s\n"  "${gpu}"  "GPU Temp:" "$gpu_temp"
 elif [[ "$((cpu_temp/1000))" -lt 62 ]]; then
-
-   echo -e "${cyan}  ${laptop}${yellow}   CPU Temp: ${yellow}$((cpu_temp/1000))°C"
-   echo -e "${cyan}  ${gpu}${yellow}   GPU Temp:${no_col} ${yellow}${gpu_temp}"
+   printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%d°C\n"  "${laptop}"  "CPU Temp:" "$((cpu_temp/1000))"
+   printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n"  "${gpu}"  "GPU Temp:" "$gpu_temp"
 else
-   echo -e "${cyan}  ${laptop}${red}   CPU Temp: ${red}$((cpu_temp/1000))°C"
-   echo -e "${cyan}  ${gpu}${red}   GPU Temp:${no_col} ${red}${gpu_temp}"
+   printf "  %-3s ${cyan}%-13s${no_col} ${red}%d°C\n"  "${laptop}"  "CPU Temp:" "$((cpu_temp/1000))"
+   printf "  %-3s ${cyan}%-13s${no_col} ${red}%s\n"  "${gpu}"  "GPU Temp:" "$gpu_temp"
 fi
-echo -e "${blue}  ${house}${grey_dim}   Internal IP: ${internal_ip}${no_col}"
-echo -e "${blue}  ${globe}${grey_dim}   External IP: ${external_ip}${no_col}"
-echo -e "${white}  ${clock}${yellow}  Uptime: ${uptime}"
-echo -e "${yellow}  ${timer}   Running Processes: ${running_processes}"
-echo -e "${green}  ${ram} ${no_col}  ${memory_usage}${no_col} "
-echo -e "${white}  ${weather}   Weather: ${weather_info}"
-echo -e ""
 
+printf "  %-3s ${blue}%-13s${no_col} ${blue}%s\n"  "${house}"  "Internal IP:" "$internal_ip"
+printf "  %-3s ${magenta_dim}%-13s${no_col} %s\n"  "${globe}"  "External IP:" "$external_ip"
+printf "  %-3s ${yellow}%-15s${no_col} ${yellow}%s\n"  "${clock}"  "Uptime┐" "$uptime"
+printf "  %-3s ${yellow}%-13s${no_col} %s\n"  "${timer}"  "  Processes:" "$running_processes"
+printf "  %-3s ${green}%-13s${no_col} %s\n"  "${ram}"  "  RAM Usage:" "$memory_usage"
 
+printf "  %-3s ${white}%-13s${no_col} %s\n"  "${weather}"  "Weather:" "$weather_info"
+echo -e "   Hello $USER ◕ ‿ ◕ "
 
-# Print the filesystem usage for `/dev/mmcblk0p1` if it exists
-#if [[ ! -z "$sd_path" ]]; then
-#  #echo -e " ${white}  ${filesystem}FILESYSTEM        used     Avail "
-#  #echo -e " ${green}  ${sd_path} ${sd_space_used} used, ${sd_space_left} left"
-#  echo -e "${grey} $(df -h /  | awk '{print ("  ",$0)}') \n"
-#else
-#  echo -e " ${magenta}  SD card not found"
-#fi
 
 
 
