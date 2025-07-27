@@ -244,53 +244,34 @@ printf "%-10s %-10s %-10s %-10s %-10s %-10s\n" "${columns[0]}" "${columns[1]}" "
 
 
 
-#is docker is installed? show user their containers active status
+# is docker installed? show user their containers active status
 if is_command docker; then
-    #echo -e "\n"
-#echo -e "${cyan}
-#  ╔╦╗╔═╗╔═╗╦╔═╔═╗╦═╗
-#   ║║║ ║║  ╠╩╗║╣ ╠╦╝
-#  ═╩╝╚═╝╚═╝╩-╩╚═╝╩╚═COMPOSE V2 🐋"
-    compose_version=$(docker compose version | awk '{print $4}')
-#echo -e "${cyan}  DOCKER STACK INFO (Compose:$compose_version) 🐋"
-echo -e "${cyan}  DOCKER STACK INFO 🐋"
-    #docker system df
-    # check docker exists and if so show the file system here
+    echo -e "${cyan}  DOCKER STACK INFO 🐋"
     docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read type total active size reclaimable; do printf "  %-12s ${cyan}%-8s ${magenta}%-8s ${white}%-8s ${green}%-8s\n" "$type" "$total" "$active" "$size" "$reclaimable";done)
 
     echo -e "${docker_filesystem_status} "
-    #echo -e "\n"
-else
-    echo -e "     "
-    echo -e "\e[33;1m  no docker info  - no systems running yet \e[0m"
 
-fi
-
-# --- notify if theres a newer compose plugin out on github then offer to update
-
-# Function to compare versions (returns "newer" if latest > current)
-compare_versions() {
-  awk -v current="$1" -v latest="$2" '
-  BEGIN {
-    split(current, cur_parts, ".")
-    split(latest, lat_parts, ".")
-    len = length(cur_parts) > length(lat_parts) ? length(cur_parts) : length(lat_parts)
-    for (i = 1; i <= len; i++) {
-      cur_part = (cur_parts[i] == "" ? 0 : cur_parts[i])
-      lat_part = (lat_parts[i] == "" ? 0 : lat_parts[i])
-      if (cur_part < lat_part) { print "newer"; exit }
-      if (cur_part > lat_part) { print "older"; exit }
+    # --- notify if there's a newer compose plugin out on GitHub then offer to update
+    # Function to compare versions (returns "newer" if latest > current)
+    compare_versions() {
+      awk -v current="$1" -v latest="$2" '
+      BEGIN {
+        split(current, cur_parts, ".")
+        split(latest, lat_parts, ".")
+        len = length(cur_parts) > length(lat_parts) ? length(cur_parts) : length(lat_parts)
+        for (i = 1; i <= len; i++) {
+          cur_part = (cur_parts[i] == "" ? 0 : cur_parts[i])
+          lat_part = (lat_parts[i] == "" ? 0 : lat_parts[i])
+          if (cur_part < lat_part) { print "newer"; exit }
+          if (cur_part > lat_part) { print "older"; exit }
+        }
+        print "equal"
+      }'
     }
-    print "equal"
-  }'
-}
 
-if [[ $(timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest) ]]  2>/dev/null
-    then
-
+    if [[ $(timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest) ]] 2>/dev/null; then
         # ---- Docker Compose Version Check ----
         CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2-)
-        #CURRENT_COMPOSE_VERSION='2.22.2' #debug
         LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
         LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
 
@@ -298,7 +279,6 @@ if [[ $(timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/l
 
         # ---- Docker Engine Version Check ----
         CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
-        #CURRENT_DOCKER_VERSION='22.2.4'#debug
         LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
         LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#v}"
 
@@ -313,22 +293,23 @@ if [[ $(timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/l
         fi
 
         if [[ "$DOCKER_UPDATE" == "newer" ]]; then
-          echo -e "${yellow}  ✅ A newer version of Docker Engine  is available (v$LATEST_DOCKER_VERSION).${no_col}"
+          echo -e "${yellow}  ✅ A newer version of Docker Engine is available (v$LATEST_DOCKER_VERSION).${no_col}"
           UPDATE_NEEDED=1
         fi
 
         if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
           echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
-          #exit 0
         fi
-
     else
         echo -e "${red}  Docker ver checker down right now .. continue try login later"
     fi
 
     if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
       echo -e "${magenta}  ✅ Run PRESTO_ENGINE_UPDATE to update Docker/Compose Engine.${no_col}"
-      #exit 0
+    fi
+else
+    echo -e "     "
+    echo -e "\e[33;1m  no docker info - no systems running yet \e[0m"
 fi
 
 
