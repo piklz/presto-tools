@@ -440,6 +440,7 @@ printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n"   "Operating System:"  "${os
 
 printf "  %-3s ${white}%-13s${no_col} ${white}%s\n" "${calendar}"   "${date}"
 
+echo -e "\n"
 # --- FAN info - Check if the fan input file exists first and show RPM if exists
 fan_input_path=$(find /sys/devices/platform/ -name "fan1_input" 2>/dev/null)
 
@@ -482,7 +483,10 @@ printf "  %-3s ${yellow}%-13s${no_col} %s\n"  "${timer}"  "  Processes:" "$runni
 printf "  %-3s ${green}%-13s${no_col} %s\n"  "${ram}"  "  RAM Usage:" "$memory_usage"
 
 printf "  %-3s ${white}%-13s${no_col} %s\n"  "${weather}"  "Weather:" "$weather_info"
+
+echo -e "\n"
 echo -e "   Hello $USER ◕ ‿ ◕ "
+
 
 
 
