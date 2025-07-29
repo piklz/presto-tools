@@ -202,8 +202,8 @@ if [[ -n "$weather_info" ]]; then
   echo ""
   #echo -e "☁️"
 else
-  echo -e "The weather [wttr.in] is downright now .. continue\n"
-  weather_info=" might be sunny somewhere?"
+  echo -e "  The weather [wttr.in] is downright now .. continue\n"
+  weather_info="..might be sunny somewhere?"
 fi
 
 #echo "$weather_info"
