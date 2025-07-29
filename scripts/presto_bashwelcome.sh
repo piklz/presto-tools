@@ -375,40 +375,40 @@ raspberry_model=$(cat /proc/device-tree/compatible | awk -v RS='\0' 'NR==1')
 
 
 print_pi_drive_info() {
+  #------ Print Raspberry Pi info in block tab mode
+  echo -e "${magenta}
+  PI 🍓Model:  ${raspberry_model}
+  ----------------------------------------${no_col}"
 
-#------ Print Raspberry Pi info in block tab mode
+  # Print header with fixed-width columns
+  echo -e "  ${grey}DRIVE           HDSIZE  USED   FREE   USE%${no_col}"
 
-echo -e "${magenta}
-  PI 🍓${magenta}Model:  ${raspberry_model}"
+  # Get the longest drive name length (for alignment)
+  max_drive_length=15  # Length of "/dev/mmcblk0p1" (longest typical drive name)
 
-#echo -e ""
+  # Loop through 'df' output and color code usage
+  df -h --output=source,size,used,avail,pcent | grep "^/dev/" | while read -r line; do
+    # Extract fields
+    drive=$(echo "$line" | awk '{print $1}')
+    hdsize=$(echo "$line" | awk '{print $2}')
+    used=$(echo "$line" | awk '{print $3}')
+    free=$(echo "$line" | awk '{print $4}')
+    usep=$(echo "$line" | awk '{print $5}' | tr -d '%')
 
-# Print header
-echo -e "  ${grey}DRIVE        HDSIZE   USED   FREE   USE%"
+    local color
+    # Set color based on usage percentage
+    if [ "$usep" -lt 40 ]; then
+      color=$green
+    elif [ "$usep" -le 65 ]; then
+      color=$yellow
+    else
+      color=$red
+    fi
 
-# Loop through 'df' output and color code usage
-df -h --output=source,size,used,avail,pcent | grep "^/dev/" | while read -r line; do
-  # Extract fields
-  drive=$(echo "$line" | awk '{print $1}')
-  hdsize=$(echo "$line" | awk '{print $2}')
-  used=$(echo "$line" | awk '{print $3}')
-  free=$(echo "$line" | awk '{print $4}')
-  usep=$(echo "$line" | awk '{print $5}' | tr -d '%')
-
-  local color
-  # Set color based on usage percentage
-  if [ "$usep" -lt 40 ]; then
-    color=$green
-  elif [ "$usep" -le 65 ]; then
-    color=$yellow
-  else
-    color=$red
-  fi
-
-  # Print formatted output
-printf "  ${color}%-12s %-8s %-6s %-6s %-5s${no_col}\n" "$drive" "$hdsize" "$used" "$free" "$usep%"
-done
-echo -e ""
+    # Print formatted output with aligned columns
+    printf "  ${color}%-${max_drive_length}s %6s %6s %6s %5s${no_col}\n" "$drive" "$hdsize" "$used" "$free" "$usep%"
+  done
+  echo -e ""
 }
 
 
