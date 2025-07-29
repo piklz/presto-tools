@@ -381,7 +381,7 @@ print_pi_drive_info() {
   ──────────────────────────────────────────${no_col}"
   
   # Print header with fixed-width columns
-  echo -e "  ${grey}DRIVE           HDSIZE  USED   FREE   USE%${no_col}"
+  echo -e "  ${grey}DRIVE           HDSIZE   USED   FREE  USE%${no_col}"
 
   # Get the longest drive name length (for alignment)
   max_drive_length=15  # Length of "/dev/mmcblk0p1" (longest typical drive name)
