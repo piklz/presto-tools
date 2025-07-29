@@ -378,8 +378,8 @@ print_pi_drive_info() {
   #------ Print Raspberry Pi info in block tab mode
   echo -e "${magenta}
   PI 🍓Model:  ${raspberry_model}
-  ----------------------------------------${no_col}"
-
+  ────────────────────────────────────────${no_col}"
+  
   # Print header with fixed-width columns
   echo -e "  ${grey}DRIVE           HDSIZE  USED   FREE   USE%${no_col}"
 
@@ -426,11 +426,11 @@ trap '{ echo -e "${laptop}${red}Error: $?" >&2; }' ERR
 
 
 echo -e ""
-#echo -e "  ${white}Raspberry Pi System Information"
-printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "Raspberry Pi System Information"
+#echo -e "  ${white}Raspberry Pi SysInfo"
+printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "Raspberry Pi SysInfo"
 
 #echo -e "  ${grey_dim}----------------------------------------${no_col}"
-printf "  %-3s ${white}%-13s${no_col} %s" "----------------------------------------"
+printf "  %-3s ${white}%-13s${no_col} %s" "────────────────────────────────────────"
 
 print_pi_drive_info #run command to show drive space info
 
