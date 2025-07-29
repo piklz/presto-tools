@@ -456,7 +456,7 @@ if [[ -n "$fan_input_path" ]]; then
 else
     # Fan input file doesn't exist
     
-    printf "  %-3s ${yellow}%-13s${no_col} \n" "{$fan}" "No Fan Detected"
+    printf "  %-3s ${yellow}%-13s${no_col} \n" "${fan}" "No Fan Detected"
 fi
 
 # ###BLOCK-COMMENT
