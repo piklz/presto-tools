@@ -372,19 +372,53 @@ raspberry_model=$(cat /proc/device-tree/compatible | awk -v RS='\0' 'NR==1')
 #weather_info=$(curl -s https://wttr.in/London?format=4) #code check timeout is above already suing this var
 
 
-
-
+  # example of print_pi_drive_info()
+ # PI 🍓Model:  raspberrypi,4-model-b
+ # -----------------------------------------------
+ # DRIVE           HDSIZE  USED   FREE   USE%  LABEL
+ # /dev/mmcblk0p2    59G   5.9G    50G    11%  -
+ # /dev/mmcblk0p1   510M    66M   445M    13%  -
+ # /dev/sda1        1.8T   1.2T   576G    68%  seagate2tb
+  
 print_pi_drive_info() {
   #------ Print Raspberry Pi info in block tab mode
   echo -e "${magenta}
-  PI 🍓Model:  ${raspberry_model}
-  ──────────────────────────────────────────${no_col}"
-  
-  # Print header with fixed-width columns
-  echo -e "  ${grey}DRIVE           HDSIZE   USED   FREE  USE%${no_col}"
+  PI 🍓Model:  ${raspberry_model}${no_col}"
 
-  # Get the longest drive name length (for alignment)
+  # Get the longest drive name and label lengths for alignment
   max_drive_length=15  # Length of "/dev/mmcblk0p1" (longest typical drive name)
+  max_label_length=0
+
+  # Collect drive labels and find the longest label
+  declare -A drive_labels
+  while read -r device label; do
+    drive_labels["$device"]="$label"
+    label_length=${#label}
+    if [ $label_length -gt $max_label_length ]; then
+      max_label_length=$label_length
+    fi
+  done < <(lsblk -n -o NAME,LABEL -l | grep -v '^$' | while read -r name label; do
+    if [[ -n "$label" ]]; then
+      echo "/dev/$name $label"
+    else
+      echo "/dev/$name -"
+    fi
+  done)
+
+  # Ensure minimum label length for alignment (e.g., for "LABEL" header)
+  if [ $max_label_length -lt 5 ]; then
+    max_label_length=5  # Minimum to fit "LABEL" header
+  fi
+
+  # Calculate total line length and create separator
+  total_line_length=$((max_drive_length + 6 + 6 + 6 + 5 + max_label_length + 7))  # Columns + spaces
+  separator=$(printf '%*s' "$total_line_length" '' | tr ' ' '-')
+
+  # Print separator
+  echo -e "  ${magenta}${separator}${no_col}"
+
+  # Print header with fixed-width columns
+  printf "  ${grey}%-${max_drive_length}s %6s %6s %6s %5s %-${max_label_length}s${no_col}\n" "DRIVE" "HDSIZE" "USED" "FREE" "USE%" "LABEL"
 
   # Loop through 'df' output and color code usage
   df -h --output=source,size,used,avail,pcent | grep "^/dev/" | while read -r line; do
@@ -394,6 +428,9 @@ print_pi_drive_info() {
     used=$(echo "$line" | awk '{print $3}')
     free=$(echo "$line" | awk '{print $4}')
     usep=$(echo "$line" | awk '{print $5}' | tr -d '%')
+
+    # Get label for the drive
+    label="${drive_labels[$drive]:--}"  # Use "-" if no label
 
     local color
     # Set color based on usage percentage
@@ -406,7 +443,7 @@ print_pi_drive_info() {
     fi
 
     # Print formatted output with aligned columns
-    printf "  ${color}%-${max_drive_length}s %6s %6s %6s %5s${no_col}\n" "$drive" "$hdsize" "$used" "$free" "$usep%"
+    printf "  ${color}%-${max_drive_length}s %6s %6s %6s %5s %-${max_label_length}s${no_col}\n" "$drive" "$hdsize" "$used" "$free" "$usep%" "$label"
   done
   echo -e ""
 }
