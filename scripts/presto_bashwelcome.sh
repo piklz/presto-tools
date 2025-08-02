@@ -478,7 +478,7 @@ printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "Raspberry Pi SysInfo"
 
 #echo -e "  ${grey_dim}----------------------------------------${no_col}"
 printf "  %-3s ${white}%-13s${no_col} %s" "──────────────────────────────────────────"
-
+echo -e "\n"
 
 
 
@@ -506,7 +506,7 @@ fi
 
 
 #test if user wants to show  print_pi_drive_info
-if [[ "$showdriveinfo" -eq 1 ]]; then
+if [[ "$show_driveinfo" -eq 1 ]]; then
     print_pi_drive_info # Displays Raspberry Pi drive information including drive name, size, usage, and labels in a formatted table
 else
     echo -e "\n  ${grey_dim}Drive information display skipped as per user preference.${no_col}"
