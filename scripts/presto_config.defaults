@@ -1,0 +1,11 @@
+# Default configuration settings for presto_bashwelcome.sh
+# 0 = disabled, 1 = enabled
+
+# Show Docker container information
+show_dockerinfo=0
+
+# Show SMART drive health information
+show_smartdriveinfo=0
+
+# Show general drive information
+show_driveinfo=0

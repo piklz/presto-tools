@@ -16,3 +16,4 @@ puma_monitor
 
 info_hidden.txt
 setup_pi_service.sh
+presto_config.local

@@ -34,18 +34,103 @@
 # --- player one start
 
 
-# USER ADJUSTABLE OPTIONS to display when login-in 
+
+
+# ______________________________________________________
+# USER ADJUSTABLE OPTIONS to display info when login-in 
+# ______________________________________________________
+# which is best to use?: 
+# smartdrive - uses an app called smartmontools 
+#              (need to install via apt first) to check the
+#              health of your drives and presto shows its 
+#              usage .
+# driveinfo  - uses the linux / pi's own in-built commands to get
+#              info no need to install above one 
+#              (unless you need the SMARThealth 
+#              status report from supported drives) .
 #
-#
-# show_systemstatusicons    =  1 # set to 1 to show system status, set to 0 to skip
- show_dockerinfo=0 # set to 1 to show docker info, set to 0 to skip
- show_smartdriveinfo=0 # set to 1 to show smart drive info, set to 0 to skip
- show_driveinfo=0 # set to 1 to show drive info, set to 0 to skip 
+# dockerinfo - is to show containers usage if you have 
+#              docker/compose installed .
+
+# -¬ uncomment out and chose value to enable(1) or not(0)
+ show_dockerinfo=0 
+ show_smartdriveinfo=0 
+ show_driveinfo=0 
+
+# _____________________________________________________
+
+
+
+
+
+echo -e ""
+#echo -e "  ${white}Raspberry Pi SysInfo"
+printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "Raspberry Pi SysInfo"
+
+#echo -e "  ${grey_dim}----------------------------------------${no_col}"
+printf "  %-3s ${white}%-13s${no_col} %s" "──────────────────────────────────────────"
+echo -e "\n"
+
+# --- Configuration Loading ---
+# First, load the default configuration settings.
+# This file must exist and is tracked by Git.
+if [ -f "./presto_config.defaults" ]; then
+    source "./presto_config.defaults"
+else
+    echo "Error: Default configuration file 'presto_config.defaults' not found." >&2
+    exit 1
+fi
+
+# Next, load the user's local overrides if the file exists.
+# This file is NOT tracked by Git. Any variables here will
+# override the default values.
+if [ -f "./presto_config.local" ]; then
+    source "./presto_config.local"
+fi
+# --- End Configuration Loading ---
+
+
+# --- The rest of your script logic goes here ---
+
+# Now you can use the variables 'show_dockerinfo', etc.
+# The values will be either the defaults or the user's overrides.
+
+if [ "$show_dockerinfo" -eq 1 ]; then
+    #echo "Displaying Docker information..."
+    print_docker_status # Displays docker status and updates if needed
+else
+    echo -e "\n  ${grey_dim}Docker status display skipped as per user preference.${no_col}"
+fi  
+    
+
+
+if [ "$show_smartdriveinfo" -eq 1 ]; then
+    #echo "Displaying SMART drive information..."
+    drive_report=$(sudo /$HOME/presto-tools/scripts/presto_drive_status.sh) # Displays drives smart status and space usage
+    echo "$drive_report"
+else
+    echo -e "\n  ${grey_dim}Drive smart information display skipped as per user preference.${no_col}"
+fi  
+
+
+if [ "$show_driveinfo" -eq 1 ]; then
+    #echo "Displaying general drive information..."
+    drive_report=$(sudo /$HOME/presto-tools/scripts/presto_drive_status.sh) # Displays drives smart status and space usage
+    echo "$drive_report"
+else
+    echo -e "\n  ${grey_dim}Drive information display skipped as per user preference.${no_col}"
+fi  
+
+
+
+
+
+#__________________________________________________________________________________________________________________________
 
 
 sleep 0
 
-# --- tv color bar gfx
+# ---  tv color bar gfx
 
 echo
 
@@ -382,7 +467,14 @@ raspberry_model=$(cat /proc/device-tree/compatible | awk -v RS='\0' 'NR==1')
 #weather_info=$(curl -s https://wttr.in/London?format=4) #code check timeout is above already suing this var
 
 
-  # example of print_pi_drive_info()
+
+
+
+
+
+
+ # example below of print_pi_drive_info()
+
  # PI 🍓Model:  raspberrypi,4-model-b
  # -----------------------------------------------
  # DRIVE           HDSIZE  USED   FREE   USE%  LABEL
@@ -390,6 +482,7 @@ raspberry_model=$(cat /proc/device-tree/compatible | awk -v RS='\0' 'NR==1')
  # /dev/mmcblk0p1   510M    66M   445M    13%  -
  # /dev/sda1        1.8T   1.2T   576G    68%  seagate2tb
   
+
 print_pi_drive_info() {
   #------ Print Raspberry Pi info in block tab mode
   echo -e "${magenta}
@@ -472,47 +565,7 @@ trap '{ echo -e "${laptop}${red}Error: $?" >&2; }' ERR
 # --- Print Raspberry Pi info STARTS HERE
 
 
-echo -e ""
-#echo -e "  ${white}Raspberry Pi SysInfo"
-printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "Raspberry Pi SysInfo"
 
-#echo -e "  ${grey_dim}----------------------------------------${no_col}"
-printf "  %-3s ${white}%-13s${no_col} %s" "──────────────────────────────────────────"
-echo -e "\n"
-
-
-
-
-# --- Display docker system status  if enabled
-if [[ "$show_dockerinfo" -eq 1 ]]; then
-    print_docker_status # Displays docker status and updates if needed
-    
-else
-    echo -e "\n  ${grey_dim}Docker status display skipped as per user preference.${no_col}"
-fi  
-
-
-
-#test if user wants to show  hd smart info  presto_drive_status.sh
-if [[ "$show_smartdriveinfo" -eq 1 ]]; then
-    drive_report=$(sudo /$HOME/presto-tools/scripts/presto_drive_status.sh) # Displays drives smart status and space usage
-    echo "$drive_report"
-else
-    echo -e "\n  ${grey_dim}Drive smart information display skipped as per user preference.${no_col}"
-fi  
-
-
-
-
-
-#test if user wants to show  print_pi_drive_info
-if [[ "$show_driveinfo" -eq 1 ]]; then
-    print_pi_drive_info # Displays Raspberry Pi drive information including drive name, size, usage, and labels in a formatted table
-else
-    echo -e "\n  ${grey_dim}Drive information display skipped as per user preference.${no_col}"
-fi  
-
-#print_pi_drive_info #run command to show drive space info
 
 
 printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n"   "Operating System:"  "${os}"
