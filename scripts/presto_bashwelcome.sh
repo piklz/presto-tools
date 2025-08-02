@@ -494,8 +494,8 @@ echo -e "\n"
 # --- Configuration Loading ---
 # First, load the default configuration settings.
 # This file must exist and is tracked by Git.
-if [ -f "./presto_config.defaults" ]; then
-    source "./presto_config.defaults"
+if [ -f "/$HOME/presto-tools/scripts/presto_config.defaults" ]; then
+    source "/$HOME/presto-tools/scripts/presto_config.defaults"
 else
     echo "Error: Default configuration file 'presto_config.defaults' not found." >&2
     exit 1
@@ -504,8 +504,8 @@ fi
 # Next, load the user's local overrides if the file exists.
 # This file is NOT tracked by Git. Any variables here will
 # override the default values.
-if [ -f "./presto_config.local" ]; then
-    source "./presto_config.local"
+if [ -f "/$HOME/presto-tools/scripts/presto_config.local" ]; then
+    source "/$HOME/presto-tools/scripts/presto_config.local"
 fi
 # --- End Configuration Loading ---
 
