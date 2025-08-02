@@ -534,18 +534,12 @@ fi
 
 
 if [ "$show_driveinfo" -eq 1 ]; then
-    #echo "Displaying general drive information..."
-    drive_report=$(sudo /$HOME/presto-tools/scripts/presto_drive_status.sh) # Displays drives smart status and space usage
-    echo "$drive_report"
+    #echo "Displaying pis own drive information using blkid lsblk..."
+    print_pi_drive_info # Displays drives smart status and space usage
+
 else
-    echo -e "\n  ${grey_dim}Drive information display skipped as per user preference.${no_col}"
+    echo -e "\n  ${grey_dim}Drive blkid information display skipped as per user preference.${no_col}"
 fi  
-
-
-
-
-
-
 
 
 
