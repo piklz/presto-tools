@@ -38,9 +38,9 @@
 #
 #
 # show_systemstatusicons    =  1 # set to 1 to show system status, set to 0 to skip
- show_dockerinfo           =  0 # set to 1 to show docker info, set to 0 to skip
- show_smartdriveinfo       =  0 # set to 1 to show smart drive info, set to 0 to skip
- show_driveinfo            =  0 # set to 1 to show drive info, set to 0 to skip 
+ show_dockerinfo=0 # set to 1 to show docker info, set to 0 to skip
+ show_smartdriveinfo=0 # set to 1 to show smart drive info, set to 0 to skip
+ show_driveinfo=0 # set to 1 to show drive info, set to 0 to skip 
 
 
 sleep 0

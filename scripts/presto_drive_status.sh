@@ -98,7 +98,7 @@ display_dashboard_output() {
         bar_text="${bar_text} "
     done
 
-    echo -e "│ \033[1m$(printf "%-15s" "$label")\033[0m \033[0;36mStatus:\033[0m $status_emoji \033[0;36mUsed:\033[0m ${bar_color}[${bar_text}]${usage_percent}%${reset_color} $(printf "%-6s" "(${total_size})")"
+    echo -e "  │ \033[1m$(printf "%-15s" "$label")\033[0m \033[0;36mStatus:\033[0m $status_emoji \033[0;36mUsed:\033[0m ${bar_color}[${bar_text}]${usage_percent}%${reset_color} $(printf "%-6s" "(${total_size})")"
 }
 
 display_simple_output() {
@@ -167,13 +167,13 @@ if [ -n "$MANUAL_DEVICE" ]; then
         fi
         
         if [ "$OUTPUT_MODE" == "full" ]; then
-            echo "╭─── Drive Health & Usage Monitor ──────────────────────────╮"
+            echo "  ╭─── Drive Health & Usage Monitor ────────────────────────╮"
         fi
 
         check_and_display "$PARTITION_PATH" "$MOUNTPOINT"
 
         if [ "$OUTPUT_MODE" == "full" ]; then
-            echo "╰───────────────────────────────────────────────────────────╯"
+            echo "  ╰─────────────────────────────────────────────────────────╯"
         fi
     else
         echo "Error: Device '$MANUAL_DEVICE' not found. Please provide a valid device path or label."
@@ -181,7 +181,7 @@ if [ -n "$MANUAL_DEVICE" ]; then
     fi
 else
     if [ "$OUTPUT_MODE" == "full" ]; then
-        echo "╭─── Drive Health & Usage Monitor ──────────────────────────╮"
+        echo "  ╭─── Drive Health & Usage Monitor ────────────────────────╮"
     fi
 
     while read -r kname mountpoint; do
@@ -191,6 +191,6 @@ else
     done < <(lsblk -n -o KNAME,MOUNTPOINT | grep -E 'sd[a-z][0-9]|nvme' | grep -v ' /$')
 
     if [ "$OUTPUT_MODE" == "full" ]; then
-        echo "╰───────────────────────────────────────────────────────────╯"
+        echo "  ╰─────────────────────────────────────────────────────────╯"
     fi
 fi
