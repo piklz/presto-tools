@@ -34,6 +34,14 @@
 # --- player one start
 
 
+# USER ADJUSTABLE OPTIONS to display when login-in 
+#
+#
+# show_systemstatusicons    =  1 # set to 1 to show system status, set to 0 to skip
+ show_dockerinfo           =  0 # set to 1 to show docker info, set to 0 to skip
+ show_smartdriveinfo       =  0 # set to 1 to show smart drive info, set to 0 to skip
+ show_driveinfo            =  0 # set to 1 to show drive info, set to 0 to skip 
+
 
 sleep 0
 
@@ -244,8 +252,9 @@ printf "%-10s %-10s %-10s %-10s %-10s %-10s\n" "${columns[0]}" "${columns[1]}" "
 
 
 
-# is docker installed? show user their containers active status
-if is_command docker; then
+print_docker_status() {
+  # is docker installed? show user their containers active status
+  if is_command docker; then
     echo -e "${cyan}  DOCKER STACK INFO 🐋"
     docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read type total active size reclaimable; do printf "  %-12s ${cyan}%-8s ${magenta}%-8s ${white}%-8s ${green}%-8s\n" "$type" "$total" "$active" "$size" "$reclaimable";done)
 
@@ -256,61 +265,62 @@ if is_command docker; then
     compare_versions() {
       awk -v current="$1" -v latest="$2" '
       BEGIN {
-        split(current, cur_parts, ".")
-        split(latest, lat_parts, ".")
-        len = length(cur_parts) > length(lat_parts) ? length(cur_parts) : length(lat_parts)
-        for (i = 1; i <= len; i++) {
-          cur_part = (cur_parts[i] == "" ? 0 : cur_parts[i])
-          lat_part = (lat_parts[i] == "" ? 0 : lat_parts[i])
-          if (cur_part < lat_part) { print "newer"; exit }
-          if (cur_part > lat_part) { print "older"; exit }
-        }
-        print "equal"
+      split(current, cur_parts, ".")
+      split(latest, lat_parts, ".")
+      len = length(cur_parts) > length(lat_parts) ? length(cur_parts) : length(lat_parts)
+      for (i = 1; i <= len; i++) {
+        cur_part = (cur_parts[i] == "" ? 0 : cur_parts[i])
+        lat_part = (lat_parts[i] == "" ? 0 : lat_parts[i])
+        if (cur_part < lat_part) { print "newer"; exit }
+        if (cur_part > lat_part) { print "older"; exit }
+      }
+      print "equal"
       }'
     }
 
     if [[ $(timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest) ]] 2>/dev/null; then
-        # ---- Docker Compose Version Check ----
-        CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2-)
-        LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
-        LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
+      # ---- Docker Compose Version Check ----
+      CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2-)
+      LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
+      LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
 
-        COMPOSE_UPDATE=$(compare_versions "$CURRENT_COMPOSE_VERSION" "$LATEST_COMPOSE_VERSION")
+      COMPOSE_UPDATE=$(compare_versions "$CURRENT_COMPOSE_VERSION" "$LATEST_COMPOSE_VERSION")
 
-        # ---- Docker Engine Version Check ----
-        CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
-        LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
-        LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#v}"
+      # ---- Docker Engine Version Check ----
+      CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
+      LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
+      LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#v}"
 
-        DOCKER_UPDATE=$(compare_versions "$CURRENT_DOCKER_VERSION" "$LATEST_DOCKER_VERSION")
+      DOCKER_UPDATE=$(compare_versions "$CURRENT_DOCKER_VERSION" "$LATEST_DOCKER_VERSION")
 
-        # ---- Show update notifications ----
-        UPDATE_NEEDED=0
+      # ---- Show update notifications ----
+      UPDATE_NEEDED=0
 
-        if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
-          echo -e "${yellow}  ✅ A newer version of Docker Compose is available (v$LATEST_COMPOSE_VERSION).${no_col}"
-          UPDATE_NEEDED=1
-        fi
+      if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
+        echo -e "${yellow}  ✅ A newer version of Docker Compose is available (v$LATEST_COMPOSE_VERSION).${no_col}"
+        UPDATE_NEEDED=1
+      fi
 
-        if [[ "$DOCKER_UPDATE" == "newer" ]]; then
-          echo -e "${yellow}  ✅ A newer version of Docker Engine is available (v$LATEST_DOCKER_VERSION).${no_col}"
-          UPDATE_NEEDED=1
-        fi
+      if [[ "$DOCKER_UPDATE" == "newer" ]]; then
+        echo -e "${yellow}  ✅ A newer version of Docker Engine is available (v$LATEST_DOCKER_VERSION).${no_col}"
+        UPDATE_NEEDED=1
+      fi
 
-        if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
-          echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
-        fi
+      if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
+        echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
+      fi
     else
-        echo -e "${red}  Docker ver checker down right now .. continue try login later"
+      echo -e "${red}  Docker ver checker down right now .. continue try login later"
     fi
 
     if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
       echo -e "${magenta}  ✅ Run PRESTO_ENGINE_UPDATE to update Docker/Compose Engine.${no_col}"
     fi
-else
+  else
     echo -e "     "
     echo -e "\e[33;1m  no docker info - no systems running yet \e[0m"
-fi
+  fi
+}
 
 
 
@@ -469,7 +479,40 @@ printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "Raspberry Pi SysInfo"
 #echo -e "  ${grey_dim}----------------------------------------${no_col}"
 printf "  %-3s ${white}%-13s${no_col} %s" "──────────────────────────────────────────"
 
-print_pi_drive_info #run command to show drive space info
+
+
+
+
+# --- Display docker system status  if enabled
+if [[ "$show_dockerinfo" -eq 1 ]]; then
+    print_docker_status # Displays docker status and updates if needed
+    
+else
+    echo -e "\n  ${grey_dim}Docker status display skipped as per user preference.${no_col}"
+fi  
+
+
+
+#test if user wants to show  hd smart info  presto_drive_status.sh
+if [[ "$show_smartdriveinfo" -eq 1 ]]; then
+    drive_report=$(sudo /$HOME/presto-tools/scripts/presto_drive_status.sh) # Displays drives smart status and space usage
+    echo "$drive_report"
+else
+    echo -e "\n  ${grey_dim}Drive smart information display skipped as per user preference.${no_col}"
+fi  
+
+
+
+
+
+#test if user wants to show  print_pi_drive_info
+if [[ "$showdriveinfo" -eq 1 ]]; then
+    print_pi_drive_info # Displays Raspberry Pi drive information including drive name, size, usage, and labels in a formatted table
+else
+    echo -e "\n  ${grey_dim}Drive information display skipped as per user preference.${no_col}"
+fi  
+
+#print_pi_drive_info #run command to show drive space info
 
 
 printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n"   "Operating System:"  "${os}"
