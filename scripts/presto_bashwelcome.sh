@@ -310,8 +310,7 @@ print_docker_status() {
       fi
 
       if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
-        echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
-      fi
+        echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}\n"
     else
       echo -e "${red}  Docker ver checker down right now .. continue try login later"
     fi
@@ -325,7 +324,6 @@ print_docker_status() {
   fi
 }
 
-echo -e "\n" # end of docker stats return \n
 
 # Function to display the RAM usage as a graphical bar
 ram_usage_bar() {
