@@ -211,7 +211,7 @@ display_simple_full_report() {
         smart_statuses["$drive"]=$(get_smart_status "/dev/$drive")
     done
 
-    echo "╭─── Drive Health & Usage Monitor ────────────────────╮"
+    echo "╭─── Drive Health & Usage Monitor ─────────PRESTO─────╮"
 
     while read -r kname pkname mountpoint label; do
         if [ -z "$mountpoint" ] && [ "$CHECK_ALL_PARTITIONS" != "true" ]; then
