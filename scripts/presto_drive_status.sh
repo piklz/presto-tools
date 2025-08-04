@@ -1,10 +1,27 @@
 #!/bin/bash
 
-# Version: 1.1
-# Author: piklz
-# GitHub: https://github.com/piklz
-# Description:
-# A script to check SMART health status and disk usage, with two output modes and manual device checking.
+#  __/\\\\\\\\\\\\\______/\\\\\\\\\______/\\\\\\\\\\\\\\\_____/\\\\\\\\\\\____/\\\\\\\\\\\\\\\_______/\\\\\______        
+#   _\/\\\/////////\\\__/\\\///////\\\___\/\\\///////////____/\\\/////////\\\_\///////\\\/////______/\\\///\\\____       
+#    _\/\\\_______\/\\\_\/\\\_____\/\\\___\/\\\______________\//\\\______\///________\/\\\_________/\\\/__\///\\\__      
+#     _\/\\\\\\\\\\\\\/__\/\\\\\\\\\\\/____\/\\\\\\\\\\\_______\////\\\_______________\/\\\________/\\\______\//\\\_     
+#      _\/\\\/////////____\/\\\//////\\\____\/\\\///////___________\////\\\____________\/\\\_______\/\\\_______\/\\\_    
+#       _\/\\\_____________\/\\\____\//\\\___\/\\\_____________________\////\\\_________\/\\\_______\//\\\______/\\\__   
+#        _\/\\\_____________\/\\\_____\//\\\__\/\\\______________/\\\______\//\\\________\/\\\________\///\\\__/\\\____  
+#         _\/\\\_____________\/\\\______\//\\\_\/\\\\\\\\\\\\\\\_\///\\\\\\\\\\\/_________\/\\\__________\///\\\\\/_____ 
+#          _\///______________\///________\///__\///////////////____\///////////___________\///_____________\/////_______  
+
+
+# Version         : v1.0.0
+# Author          : pixelpiklz
+# GitHub          : github/piklz
+#
+# Summary         : A comprehensive tool to monitor disk health and usage on Linux systems. 
+#                   It leverages smartctl for SMART status and lsblk for disk and partition details, 
+#                   offering multiple output formats for different use cases.
+#
+# Changes (v1.0.0): Refactored the --simple output to correctly display the SMART status for all partitions on 
+#                   a physical drive, instead of just the first partition. All partitions now inherit the 
+#                   health status of their parent disk.
 
 # --- Help Function ---
 display_help() {
@@ -12,14 +29,17 @@ display_help() {
     echo ""
     echo "Options:"
     echo "  --help                  Display this help message and exit."
-    echo "  --simple                Output a simple, single-line status for each drive (e.g., label=✅)."
+    echo "  --moreinfo              Display detailed output with drive and partition information."
+    echo "  --simple                Output a simple, single-line SMART status for each physical drive (e.g., label=✅)."
     echo "  --device <DEVICE>       Check a single device specified by its path (e.g., /dev/sda1) or label (e.g., Seagate2TB)."
+    echo "  --all-partitions        Check all partitions, including unmounted ones. Usage will show as N/A for unmounted."
     echo ""
     echo "Examples:"
     echo "  sudo ./drive_smart_status.sh"
+    echo "  sudo ./drive_smart_status.sh --moreinfo"
     echo "  sudo ./drive_smart_status.sh --simple"
     echo "  sudo ./drive_smart_status.sh --device /dev/sdb1"
-    echo "  sudo ./drive_smart_status.sh --simple --device /dev/sdb1"
+    echo "  sudo ./drive_smart_status.sh --all-partitions"
     exit 0
 }
 
@@ -40,7 +60,8 @@ if ! command -v smartctl &> /dev/null; then
 fi
 
 # Set output mode and manual device check
-OUTPUT_MODE="full"
+OUTPUT_MODE="simple_full"
+CHECK_ALL_PARTITIONS="false"
 MANUAL_DEVICE=""
 
 while (( "$#" )); do
@@ -52,6 +73,10 @@ while (( "$#" )); do
       OUTPUT_MODE="simple"
       shift
       ;;
+    --moreinfo)
+      OUTPUT_MODE="full"
+      shift
+      ;;
     --device)
       if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
         MANUAL_DEVICE="$2"
@@ -61,6 +86,10 @@ while (( "$#" )); do
         exit 1
       fi
       ;;
+    --all-partitions)
+      CHECK_ALL_PARTITIONS="true"
+      shift
+      ;;
     *)
       echo "Error: Invalid argument '$1'."
       echo "Use --help for a list of available options."
@@ -69,128 +98,265 @@ while (( "$#" )); do
   esac
 done
 
-# A list to store disks that have been checked to avoid duplicates
-declare -A checked_disks
+# --- Core Logic Functions ---
 
-# --- Output Functions ---
-display_dashboard_output() {
-    local label=$1
-    local status_emoji=$2
-    local usage_percent=$3
-    local total_size=$4
-
-    local bar_color='\033[0;32m'
-    if [ "$usage_percent" -gt 80 ]; then
-        bar_color='\033[0;31m'
-    elif [ "$usage_percent" -gt 20 ]; then
-        bar_color='\033[0;33m'
-    fi
-
-    local reset_color='\033[0m'
-    local num_blocks=$((usage_percent / 10))
-    local num_spaces=$((10 - num_blocks))
-    local bar_text=""
-    
-    for ((i=0; i<num_blocks; i++)); do
-        bar_text="${bar_text}▇"
-    done
-    for ((i=0; i<num_spaces; i++)); do
-        bar_text="${bar_text} "
-    done
-
-    echo -e "  │ \033[1m$(printf "%-15s" "$label")\033[0m \033[0;36mStatus:\033[0m $status_emoji \033[0;36mUsed:\033[0m ${bar_color}[${bar_text}]${usage_percent}%${reset_color} $(printf "%-6s" "(${total_size})")"
-}
-
-display_simple_output() {
-    local label=$1
-    local status_emoji=$2
-    echo "$label $status_emoji"
-}
-# --- End of Output Functions ---
-
-# Function to get and display the status for a given partition
-check_and_display() {
-    local partition_path=$1
-    local mountpoint=$2
-    local parent_disk_kname=$(lsblk -n -o PKNAME "$partition_path" | xargs)
-    
-    if [ -v "checked_disks[$parent_disk_kname]" ]; then
-        return
-    fi
-    checked_disks["$parent_disk_kname"]=1
-
-    local drive_label=$(blkid -s LABEL -o value "$partition_path" 2>/dev/null)
-    local smart_output
+# Function to get SMART status for a physical drive
+get_smart_status() {
+    local device_path=$1
     local status_emoji="❓"
+    
+    # List of common device types to try
+    local device_types=("ata" "scsi" "sat" "usbsg")
+    
+    # Iterate through device types to find a working one
+    for type in "${device_types[@]}"; do
+        local smart_output
+        smart_output=$(smartctl -d "$type" --health "$device_path" 2>&1)
 
-    smart_output=$(smartctl --health "$partition_path" 2>&1)
-    if echo "$smart_output" | grep -q "SMART Health Status: OK"; then
-        status_emoji="✅"
-    elif echo "$smart_output" | grep -q "SMART Health Status:"; then
-        status_emoji="⚠️"
-    else
-        smart_output=$(smartctl -d sat --health "$partition_path" 2>&1)
         if echo "$smart_output" | grep -q "SMART Health Status: OK"; then
             status_emoji="✅"
-        elif echo "$smart_output" | grep -q "SMART Health Status:"; then
+            break
+        elif echo "$smart_output" | grep -q "SMART Health Status: FAILED"; then
             status_emoji="⚠️"
+            break
         fi
-    fi
-
-    local df_output=$(df -hP "$mountpoint" | awk 'NR==2 {print $2, $5}')
-    local total_size=$(echo "$df_output" | awk '{print $1}')
-    local usage_percent=$(echo "$df_output" | awk '{print $2}' | sed 's/%//')
+    done
     
-    local output_label
-    if [ -n "$drive_label" ]; then
-        output_label="$drive_label"
-    else
-        output_label="$partition_path"
-    fi
+    echo "$status_emoji"
+}
 
-    if [ "$OUTPUT_MODE" == "full" ]; then
-        display_dashboard_output "$output_label" "$status_emoji" "$usage_percent" "$total_size"
+# Function to truncate a long label with an ellipsis
+truncate_label() {
+    local label="$1"
+    local max_len=12
+    if [ ${#label} -gt $max_len ]; then
+        # Take 5 chars from the start, 4 from the end, and add "..."
+        local start_chars=${label:0:5}
+        local end_chars=${label: -4}
+        echo "${start_chars}...${end_chars}"
     else
-        display_simple_output "$output_label" "$status_emoji"
+        echo "$label"
     fi
 }
 
+# --- Output Functions ---
+
+display_full_report() {
+    declare -A smart_statuses
+    local drives=$(lsblk -d -n -o KNAME | grep -E 'sd[a-z]|nvme')
+
+    for drive in $drives; do
+        smart_statuses["$drive"]=$(get_smart_status "/dev/$drive")
+    done
+
+    echo "╭─── Drive Health & Usage Monitor ─────────PRESTO─────╮"
+    local current_parent_disk=""
+
+    while read -r kname pkname mountpoint label; do
+        if [ "$pkname" != "$current_parent_disk" ]; then
+            if [ -n "$current_parent_disk" ]; then
+                echo "│"
+            fi
+            current_parent_disk="$pkname"
+            local status_emoji="${smart_statuses[$pkname]}"
+            echo -e "│ [$(printf "%-3s" "$pkname")]-Status: $status_emoji"
+        fi
+
+        if [ -z "$mountpoint" ] && [ "$CHECK_ALL_PARTITIONS" != "true" ]; then
+            continue
+        fi
+
+        local total_size="N/A"
+        local usage_percent="N/A"
+        if [ -n "$mountpoint" ]; then
+            local df_output=$(df -hP "$mountpoint" | awk 'NR==2 {print $2, $5}')
+            total_size=$(echo "$df_output" | awk '{print $1}')
+            usage_percent=$(echo "$df_output" | awk '{print $2}' | sed 's/%//')
+        fi
+        
+        local bar_color='\033[0m'
+        if [ -n "$usage_percent" ] && [ "$usage_percent" != "N/A" ]; then
+            bar_color='\033[0;32m'
+            if [ "$usage_percent" -gt 80 ]; then bar_color='\033[0;31m';
+            elif [ "$usage_percent" -gt 20 ]; then bar_color='\033[0;33m'; fi
+        fi
+        local reset_color='\033[0m'
+        local bar_text="          "
+        if [ -n "$usage_percent" ] && [ "$usage_percent" != "N/A" ]; then
+            local num_blocks=$((usage_percent / 10))
+            local num_spaces=$((10 - num_blocks))
+            bar_text=""
+            for ((i=0; i<num_blocks; i++)); do bar_text="${bar_text}▇"; done
+            for ((i=0; i<num_spaces; i++)); do bar_text="${bar_text} "; done
+        fi
+
+        local output_label=""
+        if [ -n "$label" ]; then
+            output_label="$(truncate_label "$label")"
+        else
+            output_label="$kname"
+        fi
+
+        echo -e "│   $(printf "%-18s" "(${kname: -1}) $output_label") Used: ${bar_color}[${bar_text}]${usage_percent}%${reset_color} ($(printf "%s" "$total_size"))"
+    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL | grep -E 'sd[a-z][0-9]|nvme')
+
+    echo "╰─────────────────────────────────────────────────────╯"
+}
+
+display_simple_full_report() {
+    declare -A smart_statuses
+    local drives=$(lsblk -d -n -o KNAME | grep -E 'sd[a-z]|nvme')
+
+    for drive in $drives; do
+        smart_statuses["$drive"]=$(get_smart_status "/dev/$drive")
+    done
+
+    echo "╭─── Drive Health & Usage Monitor ────────────────────╮"
+
+    while read -r kname pkname mountpoint label; do
+        if [ -z "$mountpoint" ] && [ "$CHECK_ALL_PARTITIONS" != "true" ]; then
+            continue
+        fi
+
+        local total_size="N/A"
+        local usage_percent="N/A"
+        if [ -n "$mountpoint" ]; then
+            local df_output=$(df -hP "$mountpoint" | awk 'NR==2 {print $2, $5}')
+            total_size=$(echo "$df_output" | awk '{print $1}')
+            usage_percent=$(echo "$df_output" | awk '{print $2}' | sed 's/%//')
+        fi
+
+        local bar_color='\033[0m'
+        if [ -n "$usage_percent" ] && [ "$usage_percent" != "N/A" ]; then
+            bar_color='\033[0;32m'
+            if [ "$usage_percent" -gt 80 ]; then bar_color='\033[0;31m';
+            elif [ "$usage_percent" -gt 20 ]; then bar_color='\033[0;33m'; fi
+        fi
+        local reset_color='\033[0m'
+        local bar_text="          "
+        if [ -n "$usage_percent" ] && [ "$usage_percent" != "N/A" ]; then
+            local num_blocks=$((usage_percent / 10))
+            local num_spaces=$((10 - num_blocks))
+            bar_text=""
+            for ((i=0; i<num_blocks; i++)); do bar_text="${bar_text}▇"; done
+            for ((i=0; i<num_spaces; i++)); do bar_text="${bar_text} "; done
+        fi
+
+        local output_label=""
+        if [ -n "$label" ]; then
+            output_label="$(truncate_label "$label")"
+        else
+            output_label="$kname"
+        fi
+
+        local parent_disk="$pkname"
+        local status_emoji="${smart_statuses[$parent_disk]}"
+
+        echo -e "│ $(printf "%-15s" "$output_label") Status: $status_emoji %: ${bar_color}[${bar_text}]${usage_percent}%${reset_color} ($(printf "%s" "$total_size"))"
+    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL | grep -E 'sd[a-z][0-9]|nvme')
+
+    echo "╰─────────────────────────────────────────────────────╯"
+}
+
+display_simple_report() {
+    # Cache SMART statuses for physical drives to avoid redundant smartctl calls
+    declare -A smart_statuses
+    local physical_drives=$(lsblk -d -n -o KNAME | grep -E 'sd[a-z]|nvme')
+    for drive in $physical_drives; do
+        smart_statuses["$drive"]=$(get_smart_status "/dev/$drive")
+    done
+
+    # Iterate over all partitions, not just the first one
+    while read -r kname pkname label; do
+        # We only want to process partitions, not full disks, and ensure they have a parent disk
+        if [[ "$kname" =~ [0-9]$ ]] && [ -n "$pkname" ]; then
+            local status="${smart_statuses[$pkname]}"
+            local output_label=""
+            if [ -n "$label" ]; then
+                output_label="$label"
+            else
+                output_label="$kname"
+            fi
+            echo "$output_label=$status"
+        fi
+    done < <(lsblk -n -o KNAME,PKNAME,LABEL | grep -E 'sd[a-z][0-9]|nvme')
+}
+
+display_single_device_full() {
+    local PARTITION_PATH=$1
+    local MOUNTPOINT=$2
+    local parent_disk=$(lsblk -n -o PKNAME "$PARTITION_PATH" | xargs)
+    local smart_status=$(get_smart_status "/dev/$parent_disk")
+    
+    echo "╭─── Drive Health & Usage Monitor ─────────PRESTO────╮"
+    echo -e "│ [$(printf "%-3s" "$parent_disk")]-Status: $smart_status"
+
+    local total_size="N/A"
+    local usage_percent="N/A"
+    if [ -n "$MOUNTPOINT" ]; then
+        local df_output=$(df -hP "$MOUNTPOINT" | awk 'NR==2 {print $2, $5}')
+        total_size=$(echo "$df_output" | awk '{print $1}')
+        usage_percent=$(echo "$df_output" | awk '{print $2}' | sed 's/%//')
+    fi
+
+    local bar_color='\033[0m'
+    if [ -n "$usage_percent" ] && [ "$usage_percent" != "N/A" ]; then
+        bar_color='\033[0;32m'
+        if [ "$usage_percent" -gt 80 ]; then bar_color='\033[0;31m';
+        elif [ "$usage_percent" -gt 20 ]; then bar_color='\033[0;33m'; fi
+    fi
+    local reset_color='\033[0m'
+    local bar_text="          "
+    if [ -n "$usage_percent" ] && [ "$usage_percent" != "N/A" ]; then
+        local num_blocks=$((usage_percent / 10))
+        local num_spaces=$((10 - num_blocks))
+        bar_text=""
+        for ((i=0; i<num_blocks; i++)); do bar_text="${bar_text}▇"; done
+        for ((i=0; i<num_spaces; i++)); do bar_text="${bar_text} "; done
+    fi
+
+    local label=$(blkid -s LABEL -o value "$PARTITION_PATH" 2>/dev/null || echo "$PARTITION_PATH")
+    local output_label=$(truncate_label "$label")
+    echo -e "│   $(printf "%-18s" "(${PARTITION_PATH: -1}) $output_label") Used: ${bar_color}[${bar_text}]${usage_percent}%${reset_color} ($(printf "%s" "$total_size"))"
+    echo "╰────────────────────────────────────────────────────╯"
+}
+
+display_single_device_simple() {
+    local PARTITION_PATH=$1
+    local parent_disk=$(lsblk -n -o PKNAME "$PARTITION_PATH" | xargs)
+    local status=$(get_smart_status "/dev/$parent_disk")
+    local label=$(blkid -s LABEL -o value "$PARTITION_PATH" 2>/dev/null || echo "$parent_disk")
+    echo "$label=$status"
+}
+
+
 # --- Main Execution Block ---
+
 if [ -n "$MANUAL_DEVICE" ]; then
     PARTITION_PATH=$(blkid -L "$MANUAL_DEVICE" 2>/dev/null || echo "$MANUAL_DEVICE")
     
     if [ -b "$PARTITION_PATH" ]; then
         MOUNTPOINT=$(lsblk -n -o MOUNTPOINT "$PARTITION_PATH" | xargs)
-        if [ -z "$MOUNTPOINT" ]; then
-            echo "Error: The device '$PARTITION_PATH' is not a mounted partition."
-            exit 1
-        fi
-        
-        if [ "$OUTPUT_MODE" == "full" ]; then
-            echo "  ╭─── Drive Health & Usage Monitor ────────────────────────╮"
-        fi
-
-        check_and_display "$PARTITION_PATH" "$MOUNTPOINT"
 
         if [ "$OUTPUT_MODE" == "full" ]; then
-            echo "  ╰─────────────────────────────────────────────────────────╯"
+            display_single_device_full "$PARTITION_PATH" "$MOUNTPOINT"
+        else
+            display_single_device_simple "$PARTITION_PATH"
         fi
     else
         echo "Error: Device '$MANUAL_DEVICE' not found. Please provide a valid device path or label."
         exit 1
     fi
 else
-    if [ "$OUTPUT_MODE" == "full" ]; then
-        echo "  ╭─── Drive Health & Usage Monitor ────────────────────────╮"
-    fi
-
-    while read -r kname mountpoint; do
-        if [ -n "$mountpoint" ]; then
-            check_and_display "/dev/$kname" "$mountpoint"
-        fi
-    done < <(lsblk -n -o KNAME,MOUNTPOINT | grep -E 'sd[a-z][0-9]|nvme' | grep -v ' /$')
-
-    if [ "$OUTPUT_MODE" == "full" ]; then
-        echo "  ╰─────────────────────────────────────────────────────────╯"
-    fi
+    case "$OUTPUT_MODE" in
+      "simple_full")
+        display_simple_full_report
+        ;;
+      "full")
+        display_full_report
+        ;;
+      "simple")
+        display_simple_report
+        ;;
+    esac
 fi
