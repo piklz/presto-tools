@@ -302,25 +302,32 @@ print_docker_status() {
       if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
         echo -e "${yellow}  ✅ A newer version of Docker Compose is available (v$LATEST_COMPOSE_VERSION).${no_col}"
         UPDATE_NEEDED=1
+        echo -e "\n"
       fi
 
       if [[ "$DOCKER_UPDATE" == "newer" ]]; then
         echo -e "${yellow}  ✅ A newer version of Docker Engine is available (v$LATEST_DOCKER_VERSION).${no_col}"
         UPDATE_NEEDED=1
+        echo -e "\n"
       fi
 
       if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
-        echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}\n"
+        echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
+        echo -e "\n"
+      fi
     else
       echo -e "${red}  Docker ver checker down right now .. continue try login later"
+      echo -e "\n"
     fi
 
     if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
       echo -e "${magenta}  ✅ Run PRESTO_ENGINE_UPDATE to update Docker/Compose Engine.${no_col}"
+      echo -e "\n"
     fi
   else
     echo -e "     "
     echo -e "\e[33;1m  no docker info - no systems running yet \e[0m"
+    echo -e "\n"
   fi
 }
 
