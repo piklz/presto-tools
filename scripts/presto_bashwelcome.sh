@@ -260,7 +260,7 @@ print_docker_status() {
     docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read type total active size reclaimable; do printf "  %-12s ${cyan}%-8s ${magenta}%-8s ${white}%-8s ${green}%-8s\n" "$type" "$total" "$active" "$size" "$reclaimable";done)
 
     echo -e "${docker_filesystem_status} "
-    echo -e "${cyan}╰────────────────────────────────────────────────╯${no_col}"
+    echo -e "${cyan}╰───────────────────────────────────────────────────╯${no_col}"
 
 
     # --- notify if there's a newer compose plugin out on GitHub then offer to update
