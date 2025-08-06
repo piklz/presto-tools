@@ -32,15 +32,15 @@
 #
 #########################################################################################################################
 
-#install tools script
-#presto toolkit xtras for future use
 
-#!/usr/bin/env bash
 set -e
 
-# Get the user's home directory.
-if [ -z "${HOME}" ]; then
-    HOME="$(getent passwd "$(id -un)" | cut -d: -f6)"
+# --- Determine the real user's home directory, even when run with sudo. ---
+USER_HOME=""
+if [ -n "$SUDO_USER" ]; then
+    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+else
+    USER_HOME="$HOME"
 fi
 
 # Set the color variables using printf.
@@ -48,6 +48,7 @@ COL_NC='\e[0m' # No Color
 COL_LIGHT_GREEN='\e[1;32m'
 COL_GREEN='\e[0;32m'
 COL_LIGHT_RED='\e[1;31m'
+COL_INFO='\e[1;34m' # Blue for INFO messages
 TICK="[${COL_LIGHT_GREEN}✓${COL_NC}]"
 CROSS="[${COL_LIGHT_RED}✗${COL_NC}]"
 INFO="[i]"
@@ -60,27 +61,63 @@ COL_LIGHT_YELLOW="\e[1;33m"
 COL_LIGHT_GREY="\e[1;2m"
 COL_ITALIC="\e[1;3m"
 
+# Dynamic log file path.
+LOG_FILE=""
+
+# Function to determine the correct log file path based on permissions.
+set_log_file_path() {
+    # Check if the script is being run as root.
+    if [ "$(id -u)" -eq 0 ]; then
+        LOG_FILE="/var/log/presto-tools_install.log"
+    else
+        # Fallback to user-owned directory.
+        mkdir -p "$USER_HOME/.local/state/presto" || { printf "Error: Could not create user log directory.\n" >&2; exit 1; }
+        LOG_FILE="$USER_HOME/.local/state/presto/presto-tools_install.log"
+    fi
+}
+
+# Function to log messages to file and screen.
+log_message() {
+    local log_level="$1"
+    local console_message="$2"
+    local log_file_message="$3"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # Log to file without color codes. Use provided log_file_message or default to console_message.
+    if [ -z "$log_file_message" ]; then
+        log_file_message="$console_message"
+    fi
+    printf "[%s] [presto-tools_install] %s %s\n" "$timestamp" "$log_level" "$log_file_message" >> "$LOG_FILE"
+
+    # Print to console with color and prefix.
+    printf "[presto-tools_install] %b%s%b %s\n" "${COL_INFO}" "$log_level" "${COL_NC}" "$console_message"
+}
+
+# --- Main script logic starts here ---
+set_log_file_path
+
 # Function to update the existing git repository.
 git_pull_update() {
-    printf "[presto-tools]%b%s%b GIT pulling the presto-tools now:\n" "${COL_LIGHT_CYAN}" "${INFO}" "${COL_NC}"
-    cd "$HOME/presto-tools" && git pull origin main
+    log_message "INFO" "GIT pulling the presto-tools now."
+    cd "$USER_HOME/presto-tools" && git pull origin main
 }
 
 # Function to clone the git repository.
 git_pull_clone() {
-    printf "GIT cloning the presto-tools now:\n"
-    git clone -b main https://github.com/piklz/presto-tools "$HOME/presto-tools"
+    log_message "INFO" "GIT cloning the presto-tools now."
+    git clone -b main https://github.com/piklz/presto-tools "$USER_HOME/presto-tools"
     do_install_prestobashwelcome
 }
 
 # Function to install the welcome message in .bashrc.
 do_install_prestobashwelcome() {
-    if grep -Fxq ". $HOME/presto-tools/scripts/presto_bashwelcome.sh" "$HOME/.bashrc"; then
-        printf "Found presto Welcome login link in bashrc. No changes needed.\n"
+    if grep -Fxq ". $USER_HOME/presto-tools/scripts/presto_bashwelcome.sh" "$USER_HOME/.bashrc"; then
+        log_message "INFO" "Found presto Welcome login link in bashrc. No changes needed."
     else
-        printf "presto Welcome Bash (in bash.rc) is missing. Adding now...\n"
-        printf "\n#presto-tools Added: presto_bash_welcome scripty\n" >> "$HOME/.bashrc"
-        printf ". $HOME/presto-tools/scripts/presto_bashwelcome.sh\n" >> "$HOME/.bashrc"
+        log_message "INFO" "presto Welcome Bash (in bash.rc) is missing. Adding now..."
+        printf "\n#presto-tools Added: presto_bash_welcome scripty\n" >> "$USER_HOME/.bashrc"
+        printf ". $USER_HOME/presto-tools/scripts/presto_bashwelcome.sh\n" >> "$USER_HOME/.bashrc"
     fi
 }
 
@@ -100,20 +137,27 @@ _complete_presto_drive_status() {
     fi
 }
 complete -F _complete_presto_drive_status presto_drive_status
-complete -F _complete_presto_drive_status "$HOME/presto-tools/scripts/presto_drive_status.sh"
+complete -F _complete_presto_drive_status "$USER_HOME/presto-tools/scripts/presto_drive_status.sh"
 EOF
 }
 
 # --- Bash Completion Installation Function ---
 install_presto_completion() {
-    local INSTALL_DIR="$HOME/.bash_completion.d"
+    local INSTALL_DIR="$USER_HOME/.bash_completion.d"
     local COMPLETION_FILE="$INSTALL_DIR/presto_drive_status_completion"
-    local BASHRC_FILE="$HOME/.bashrc"
+    local BASHRC_FILE="$USER_HOME/.bashrc"
+    
+    # Check if completion is already installed.
+    if [ -f "$COMPLETION_FILE" ] && grep -qF "Load custom Bash completion scripts" "$BASHRC_FILE"; then
+        return 0 # Already installed, exit silently.
+    fi
+    
+    log_message "INFO" "Installing Bash completion for presto_drive_status.sh..."
     
     # Check and create the completion directory if it doesn't exist.
     if [ ! -d "$INSTALL_DIR" ]; then
         mkdir -p "$INSTALL_DIR" || {
-            printf "Error: Failed to create completion directory '%s'. Exiting.\n" "$INSTALL_DIR" >&2
+            log_message "ERROR" "Failed to create completion directory '$INSTALL_DIR'. Exiting."
             return 1
         }
     fi
@@ -121,31 +165,31 @@ install_presto_completion() {
     # Write the completion file.
     _get_completion_logic > "$COMPLETION_FILE"
     
-    # Add the sourcing snippet to .bashrc if it doesn't exist.
+    # Add the sourcing snippet to .bashrc.
     if ! grep -qF "Load custom Bash completion scripts" "$BASHRC_FILE"; then
         printf "\n# Load custom Bash completion scripts from %s\n" "$INSTALL_DIR" >> "$BASHRC_FILE"
         printf "for file in %s/*; do [ -f \"\$file\" ] && . \"\$file\"; done\n" "$INSTALL_DIR" >> "$BASHRC_FILE"
-        printf "Bash completion added to ~/.bashrc. Please source it or restart your terminal.\n"
+        log_message "INFO" "Bash completion added to ~/.bashrc. Please source it or restart your terminal."
     fi
 
-    printf "Bash completion for presto_drive_status.sh installed successfully.\n"
+    log_message "INFO" "Bash completion for presto_drive_status.sh installed successfully."
 }
 
 # --- Main script logic. ---
-if [ ! -d "$HOME/presto-tools" ]; then
+if [ ! -d "$USER_HOME/presto-tools" ]; then
     git_pull_clone
 else
-    printf "presto-tools folder already exists. Checking for updates...\n"
-    cd "$HOME/presto-tools" && git fetch
+    log_message "INFO" "presto-tools folder already exists. Checking for updates..."
+    cd "$USER_HOME/presto-tools" && git fetch
     if git status | grep -q "Your branch is up to date"; then
-        [ -f "$HOME/presto-tools/.outofdate" ] && rm "$HOME/presto-tools/.outofdate"
-        printf "%s %b PRESTO Git local/repo is up-to-date%b\n" "${INFO}" "${COL_LIGHT_GREEN}" "${COL_NC}"
+        [ -f "$USER_HOME/presto-tools/.outofdate" ] && rm "$USER_HOME/presto-tools/.outofdate"
+        log_message "INFO" "PRESTO Git local/repo is up-to-date."
     else
-        printf "%s %b PRESTO update is available%b ✓%b\n" "${INFO}" "${COL_GREEN}" "${COL_LIGHT_GREEN}" "${COL_NC}"
+        log_message "INFO" "PRESTO update is available. Pulling..."
         git_pull_update
-        if [ ! -f "$HOME/presto-tools/.outofdate" ]; then
+        if [ ! -f "$USER_HOME/presto-tools/.outofdate" ]; then
             whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
-            touch "$HOME/presto-tools/.outofdate"
+            touch "$USER_HOME/presto-tools/.outofdate"
         fi
     fi
 fi
