@@ -24,9 +24,11 @@
 #  			to use run:  sudo ./presto-tools_install.sh
 #
 #--------------------------------------------------------------------------------------------------
+# version 2.0
 # author		: piklz
 # github		: https://github.com/piklz/presto-tools.git
-# web		   	: https://github.com/piklz/presto-tools.git
+# description	: This script installs the presto-tools and its dependencies.
+# changes  		: - added bash completion for presto_drive_status.sh
 #
 #########################################################################################################################
 
