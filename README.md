@@ -43,7 +43,14 @@
 -  and run:
 <pre><code>./scripts/presto-tools_install.sh</code></pre>
 
+##Customise the info shown (log in terminal)!
 
+Theres a file the user can customise env options in the ~/presto-tools/scripts/ directory,"presto_config.defaults" with this you can copy(cp) and call it "presto_config.local"
+<pre><code>cp presto_config.defaults presto_config.local</code></pre>
+- open new file in nano and edit the values as needed; next time you login it will show the info chosen
+<pre><code>sudo nano presto_config.local</code></pre>
+change values from 0 to 1 to enable.. etc
+<pre><code>[in nano] ctrl + x +  Y + ENTER </code></pre> to save new file
 
 <h1 align="center">  
 <a name="" href="https://www.buymeacoffee.com/pixelpiklz"><img src="https://img.buymeacoffee.com/api/?url=aHR0cHM6Ly9jZG4uYnV5bWVhY29mZmVlLmNvbS91cGxvYWRzL3Byb2ZpbGVfcGljdHVyZXMvMjAyMi8wNy8wOFlYYUJXMlRvbWc5M0xqLnBuZ0AzMDB3XzBlLndlYnA=&creator=pixelpiklz&design_code=1&design_color=%23ff813f&slug=pixelpiklz" alt="presto" width="200"></a>
