@@ -24,15 +24,16 @@
 #  			to use run:  sudo ./presto-tools_install.sh
 #
 #--------------------------------------------------------------------------------------------------
-# version 2.0
+# version 2.1
 # author		: piklz
 # github		: https://github.com/piklz/presto-tools.git
 # description	: This script installs the presto-tools and its dependencies.
-# changes  		: - added bash completion for presto_drive_status.sh
+# changes  		: - added bash completion for presto_drive_status.sh and log checks and updates 
 #
 #########################################################################################################################
 
 
+#!/bin/sh
 set -e
 
 # --- Determine the real user's home directory, even when run with sudo. ---
@@ -49,6 +50,8 @@ COL_LIGHT_GREEN='\e[1;32m'
 COL_GREEN='\e[0;32m'
 COL_LIGHT_RED='\e[1;31m'
 COL_INFO='\e[1;34m' # Blue for INFO messages
+COL_WARNING='\e[1;33m' # Yellow for WARNING messages
+COL_ERROR='\e[1;31m' # Red for ERROR messages
 TICK="[${COL_LIGHT_GREEN}✓${COL_NC}]"
 CROSS="[${COL_LIGHT_RED}✗${COL_NC}]"
 INFO="[i]"
@@ -64,6 +67,9 @@ COL_ITALIC="\e[1;3m"
 # Dynamic log file path.
 LOG_FILE=""
 
+# Verbose mode variable.
+VERBOSE_MODE=0
+
 # Function to determine the correct log file path based on permissions.
 set_log_file_path() {
     # Check if the script is being run as root.
@@ -71,9 +77,13 @@ set_log_file_path() {
         LOG_FILE="/var/log/presto-tools_install.log"
     else
         # Fallback to user-owned directory.
-        mkdir -p "$USER_HOME/.local/state/presto" || { printf "Error: Could not create user log directory.\n" >&2; exit 1; }
-        LOG_FILE="$USER_HOME/.local/state/presto/presto-tools_install.log"
+        LOG_DIR="$USER_HOME/.local/state/presto"
+        mkdir -p "$LOG_DIR" || { printf "Error: Could not create user log directory.\n" >&2; exit 1; }
+        LOG_FILE="$LOG_DIR/presto-tools_install.log"
     fi
+    
+    # Ensure the log file exists and is writable.
+    touch "$LOG_FILE" || { printf "Error: Could not create or write to log file '%s'.\n" "$LOG_FILE" >&2; exit 1; }
 }
 
 # Function to log messages to file and screen.
@@ -90,11 +100,35 @@ log_message() {
     fi
     printf "[%s] [presto-tools_install] %s %s\n" "$timestamp" "$log_level" "$log_file_message" >> "$LOG_FILE"
 
-    # Print to console with color and prefix.
-    printf "[presto-tools_install] %b%s%b %s\n" "${COL_INFO}" "$log_level" "${COL_NC}" "$console_message"
+    # Print to console with color and prefix, respecting verbose mode.
+    local color
+    case "$log_level" in
+        INFO) color="${COL_INFO}" ;;
+        WARNING) color="${COL_WARNING}" ;;
+        ERROR) color="${COL_ERROR}" ;;
+        *) color="${COL_NC}" ;;
+    esac
+
+    if [ "$VERBOSE_MODE" -eq 1 ] || [ "$log_level" = "INFO" ] || [ "$log_level" = "WARNING" ] || [ "$log_level" = "ERROR" ]; then
+        printf "[presto-tools_install] %b%s%b %s\n" "$color" "$log_level" "${COL_NC}" "$console_message"
+    fi
 }
 
 # --- Main script logic starts here ---
+
+# Parse command-line arguments.
+for arg in "$@"; do
+    case "$arg" in
+        --verbose)
+            VERBOSE_MODE=1
+            shift
+            ;;
+        *)
+            # unknown argument
+            ;;
+    esac
+done
+
 set_log_file_path
 
 # Function to update the existing git repository.
@@ -118,26 +152,27 @@ do_install_prestobashwelcome() {
         log_message "INFO" "presto Welcome Bash (in bash.rc) is missing. Adding now..."
         printf "\n#presto-tools Added: presto_bash_welcome scripty\n" >> "$USER_HOME/.bashrc"
         printf ". $USER_HOME/presto-tools/scripts/presto_bashwelcome.sh\n" >> "$USER_HOME/.bashrc"
+        log_message "INFO" "presto_bash_welcome script added to ~/.bashrc."
     fi
 }
 
 # --- Bash Completion Logic (This is a helper function that stores text) ---
 _get_completion_logic() {
-    cat << 'EOF'
+    cat << EOF
 _complete_presto_drive_status() {
     local cur_word prev_word
     COMPREPLY=()
     
-    if [ "${prev_word}" = "--device" ]; then
-        local devices=$(lsblk -p -o NAME,TYPE -n | grep -E 'disk|part' | awk '{print $1}')
-        COMPREPLY=( $(compgen -W "${devices}" -- "${cur_word}") )
+    if [ "\${prev_word}" = "--device" ]; then
+        local devices=\$(lsblk -p -o NAME,TYPE -n | grep -E 'disk|part' | awk '{print \$1}')
+        COMPREPLY=( \$(compgen -W "\${devices}" -- "\${cur_word}") )
     else
         local valid_options="--help --moreinfo --simple --device --all-partitions"
-        COMPREPLY=( $(compgen -W "${valid_options}" -- "${cur_word}") )
+        COMPREPLY=( \$(compgen -W "\${valid_options}" -- "\${cur_word}") )
     fi
 }
 complete -F _complete_presto_drive_status presto_drive_status
-complete -F _complete_presto_drive_status "$USER_HOME/presto-tools/scripts/presto_drive_status.sh"
+complete -F _complete_presto_drive_status "\$USER_HOME/presto-tools/scripts/presto_drive_status.sh"
 EOF
 }
 
@@ -149,6 +184,7 @@ install_presto_completion() {
     
     # Check if completion is already installed.
     if [ -f "$COMPLETION_FILE" ] && grep -qF "Load custom Bash completion scripts" "$BASHRC_FILE"; then
+        log_message "INFO" "Bash completion is already installed."
         return 0 # Already installed, exit silently.
     fi
     
@@ -177,6 +213,7 @@ install_presto_completion() {
 
 # --- Main script logic. ---
 if [ ! -d "$USER_HOME/presto-tools" ]; then
+    log_message "INFO" "presto-tools folder not found. Cloning repository."
     git_pull_clone
 else
     log_message "INFO" "presto-tools folder already exists. Checking for updates..."
@@ -196,3 +233,6 @@ fi
 
 # --- Install completion after clone or update. ---
 install_presto_completion
+
+# --- Final message confirming log file location ---
+log_message "INFO" "Log file written to: $LOG_FILE"
