@@ -1,3 +1,4 @@
+```bash
 #!/bin/env bash
 # shellcheck disable=SC1090
 #  __/\\\\\\\\\\\\\______/\\\\\\\\\______/\\\\\\\\\\\\\\\_____/\\\\\\\\\\\____/\\\\\\\\\\\\\\\_______/\\\\\______        
@@ -17,11 +18,11 @@
 # author        : piklz
 # github        : https://github.com/piklz/presto-tools.git
 # web           : https://github.com/piklz/presto-tools.git
-# changes since : v1.0.0, 2025-08-07 (Initial version with logging, disk space checks, and config alignment)
+# changes since : v1.0.1, 2025-08-07 (Fixed mv overwrite prompt in rotate_logs)
 # desc          : Displays Raspberry Pi system information (CPU, disk, Docker, weather) with a colorful UI
 ##################################################################################################
 
-presto_VERSION='1.0.0'
+presto_VERSION='1.0.1'
 VERBOSE_MODE=0  # Default to prevent integer expression error
 
 # Determine real user's home directory
@@ -100,7 +101,7 @@ rotate_logs() {
             echo "$line" >> "$temp_file"
         fi
     done < "$LOG_FILE"
-    mv "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; return 1; }
+    mv -f "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; return 1; }
     log_message "INFO" "Log rotation completed"
     return 0
 }
@@ -141,6 +142,8 @@ log_level="INFO"
 LOG_RETENTION_DAYS=30
 CHECK_DISK_SPACE=1
 WEATHER_LOCATION="London"
+SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"
+DEFAULT_OUTPUT_MODE="simple_full"
 EOF
 fi
 log_message "INFO" "Loading default configuration from $DEFAULT_CONFIG"
@@ -473,3 +476,4 @@ echo -e "   Hello $USER ◕ ‿ ◕ "
 
 # Clear trap
 trap - ERR
+```
