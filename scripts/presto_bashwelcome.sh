@@ -414,7 +414,7 @@ gpu_temp=$(vcgencmd measure_temp 2>/dev/null | awk '{split($0,numbers,"=")} {pri
 internal_ip=$(hostname -I 2>/dev/null | awk '{print $1, $2, $3}' || echo "N/A")
 external_ip=$(curl -s https://ipv4.icanhazip.com 2>/dev/null || echo "N/A")
 timezone=$(timedatectl 2>/dev/null | grep "Time zone" | awk '{print $3$4$5}' || echo "UTC")
-date=$(date +"%A, %d %B %Y,%H:%M:%S $timezone" 2>/dev/null || echo "N/A")
+date_full=$(date +"%A, %d %B %Y,%H:%M:%S $timezone" 2>/dev/null || echo "N/A")
 os=$(lsb_release -d -r -c 2>/dev/null | awk -F: '{split($2,a," "); printf a[1]" "  }'; uname -s -m || echo "N/A")
 uptime=$(uptime -p 2>/dev/null || echo "N/A")
 memory_usage=$(ram_usage_bar)
@@ -423,8 +423,8 @@ raspberry_model=$(cat /proc/device-tree/compatible 2>/dev/null | awk -v RS='\0' 
 
 # Display system info
 echo -e ""
-printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "" "Raspberry Pi SysInfo"
-printf "  %-3s ${white}%-13s${no_col} %s" "──────────────────────────────────────────"
+#printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "" "Raspberry Pi SysInfo"
+#printf "  %-3s ${white}%-13s${no_col} %s" "──────────────────────────────────────────"
 echo -e "\n"
 
 if [ "$show_docker_info" -eq 1 ]; then
@@ -461,8 +461,27 @@ else
     echo -e "\n  ${grey_dim}Drive blkid information display skipped as per user preference.${no_col}"
 fi
 
-printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n" "${os}" "Operating System:" "${os}"
-printf "  %-3s ${white}%-13s${no_col} ${white}%s\n" "${calendar}" "Date:" "${date}"
+
+#START OF FINAL INFO BLOCK EMOJI -----------------------------
+
+# Extract the first part of the date (up to the time)
+date_part=$(echo "$date_full" | cut -d' ' -f1-4 | sed 's/,$//')
+
+# Extract the second part (timezone)
+timezone_part=$(echo "$date_full" | cut -d' ' -f5-)
+
+
+#start of date + OS SYS  block emoji block  
+printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n" "Operating System:" "${os}"
+
+
+# Print the first line with the date and time
+printf " %-3s ${white}%-13s${no_col}  %s\n" " ${calendar}" "Date:" "${date_part}"
+
+# Print the second line with the timezone, indented
+printf "%s%s\n" "$(printf '%*s' 22)" "${timezone_part}"
+
+
 echo -e "\n"
 
 fan_input_path=$(find /sys/devices/platform/ -name "fan1_input" 2>/dev/null)
