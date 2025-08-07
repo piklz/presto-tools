@@ -15,5 +15,8 @@ log_level="INFO"
 LOG_RETENTION_DAYS=30
 CHECK_DISK_SPACE=1
 WEATHER_LOCATION="London"
+
+#presto_drive_status
 SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"
+
 DEFAULT_OUTPUT_MODE="simple_full"
