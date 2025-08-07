@@ -263,7 +263,7 @@ print_docker_status() {
     log_message "INFO" "Checking Docker and Compose versions"
     if ! timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest >/dev/null 2>&1; then
         log_message "WARNING" "GitHub API unavailable, skipping version check"
-        echo -e "${red}  Docker ver checker down right now .. continue try login later"
+        echo -e "${red}  Docker ver checker down right now .. continue try login later${no_col}"
         echo -e "\n"
         return 0
     fi
