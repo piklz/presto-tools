@@ -9,3 +9,11 @@ show_smartdriveinfo=0
 
 # Show general drive information
 show_driveinfo=0
+
+VERBOSE_MODE=0
+log_level="INFO"
+LOG_RETENTION_DAYS=30
+CHECK_DISK_SPACE=1
+WEATHER_LOCATION="London"
+SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"
+DEFAULT_OUTPUT_MODE="simple_full"
