@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ────────────────────────────────────────────────────────────────────────────
 # Docker Container Status Script
 # Version: 2.0
