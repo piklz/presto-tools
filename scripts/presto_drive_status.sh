@@ -18,13 +18,13 @@
 # Author        : piklz
 # GitHub        : https://github.com/piklz/presto-tools.git
 # Web           : https://github.com/piklz/presto-tools.git
-# Version       : v1.0.2
-# Changes since : v1.0.2, 2025-08-07 (Fixed mv overwrite prompt in rotate_logs)
+# Version       : v1.0.3
+# Changes since : v1.0.3, 2025-08-07 (Fixed permissions for log directory/file)
 # Desc          : Monitors disk health using smartctl and usage with lsblk/df, with multiple output formats
 ##################################################################################################
 
 # Set default variables
-presto_VERSION='1.0.2'
+presto_VERSION='1.0.3'
 VERBOSE_MODE=0
 DEFAULT_OUTPUT_MODE="simple_full"
 
@@ -38,11 +38,14 @@ else
     USER="$(id -un)"
 fi
 
-# Set log file path
+# Set log file path and ensure permissions
 LOG_DIR="$USER_HOME/.local/state/presto"
 LOG_FILE="$LOG_DIR/presto_drive_status.log"
 mkdir -p "$LOG_DIR" || { echo "Error: Could not create log directory $LOG_DIR" >&2; exit 1; }
 touch "$LOG_FILE" || { echo "Error: Could not create log file $LOG_FILE" >&2; exit 1; }
+chown "$USER:$USER" "$LOG_DIR" "$LOG_FILE" 2>/dev/null || true
+chmod 755 "$LOG_DIR" 2>/dev/null || true
+chmod 644 "$LOG_FILE" 2>/dev/null || true
 
 # Color variables (aligned with presto_bashwelcome.sh)
 no_col="\e[0m"
@@ -70,7 +73,9 @@ log_message() {
     local console_message="$2"
     local log_file_message="${3:-$console_message}"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    printf "[%s] [presto_drive_status] %s %s\n" "$timestamp" "$log_level" "$log_file_message" >> "$LOG_FILE"
+    if [ -w "$LOG_FILE" ]; then
+        printf "[%s] [presto_drive_status] %s %s\n" "$timestamp" "$log_level" "$log_file_message" >> "$LOG_FILE"
+    fi
     # Only display errors that match presto_bashwelcome.sh's behavior
     if [ "$log_level" = "ERROR" ] && [[ "$console_message" =~ "not found" || "$console_message" =~ "unavailable" || "$console_message" =~ "requires root privileges" ]]; then
         echo -e "${yellow}${console_message}${no_col}"
@@ -90,10 +95,12 @@ rotate_logs() {
     log_message "INFO" "Rotating logs older than $LOG_RETENTION_DAYS days in $LOG_FILE"
     local temp_file="$LOG_DIR/presto_drive_status_temp.log"
     touch "$temp_file" || { log_message "ERROR" "Failed to create temporary log file $temp_file"; return 1; }
+    chown "$USER:$USER" "$temp_file" 2>/dev/null || true
+    chmod 644 "$temp_file" 2>/dev/null || true
     local cutoff_date=$(date -d "$LOG_RETENTION_DAYS days ago" '+%Y-%m-%d' 2>/dev/null)
     if [ -z "$cutoff_date" ]; then
         log_message "ERROR" "Failed to calculate cutoff date for log rotation"
-        rm -f "$temp_file"
+        rm -f "$temp_file" 2>/dev/null
         return 1
     fi
     while IFS= read -r line; do
@@ -104,7 +111,9 @@ rotate_logs() {
             echo "$line" >> "$temp_file"
         fi
     done < "$LOG_FILE"
-    mv -f "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; return 1; }
+    mv -f "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; rm -f "$temp_file" 2>/dev/null; return 1; }
+    chown "$USER:$USER" "$LOG_FILE" 2>/dev/null || true
+    chmod 644 "$LOG_FILE" 2>/dev/null || true
     log_message "INFO" "Log rotation completed"
     return 0
 }
@@ -117,7 +126,7 @@ check_disk_space() {
         return 0
     fi
     local available_space_mb
-    available_space_mb=$(df -m "$USER_HOME" | tail -1 | awk '{print $4}')
+    available_space_mb=$(df -m "$USER_HOME" 2>/dev/null | tail -1 | awk '{print $4}')
     if [ -z "$available_space_mb" ] || ! [[ "$available_space_mb" =~ ^[0-9]+$ ]]; then
         log_message "ERROR" "Failed to determine available disk space"
         return 1
@@ -148,6 +157,8 @@ WEATHER_LOCATION="London"
 SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"
 DEFAULT_OUTPUT_MODE="simple_full"
 EOF
+    chown "$USER:$USER" "$DEFAULT_CONFIG" 2>/dev/null || true
+    chmod 644 "$DEFAULT_CONFIG" 2>/dev/null || true
 fi
 log_message "INFO" "Loading default configuration from $DEFAULT_CONFIG"
 source "$DEFAULT_CONFIG"
@@ -249,7 +260,7 @@ while (( "$#" )); do
     esac
 done
 
-# Function to get SMART status for a physical drive (restored from original)
+# Function to get SMART status for a physical drive
 get_smart_status() {
     local device_path=$1
     local status_emoji="❓"
@@ -293,7 +304,7 @@ display_full_report() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating full report"
     declare -A smart_statuses
-    local drives=$(lsblk -d -n -o KNAME | grep -E 'sd[a-z]|nvme' || echo "")
+    local drives=$(lsblk -d -n -o KNAME 2>/dev/null | grep -E 'sd[a-z]|nvme' || echo "")
     if [ -z "$drives" ]; then
         log_message "ERROR" "No drives found"
         echo -e "${yellow}No drives found${no_col}"
@@ -324,7 +335,7 @@ display_full_report() {
         local total_size="N/A"
         local usage_percent="N/A"
         if [ -n "$mountpoint" ]; then
-            local df_output=$(df -hP "$mountpoint" | awk 'NR==2 {print $2, $5}' 2>/dev/null)
+            local df_output=$(df -hP "$mountpoint" 2>/dev/null | awk 'NR==2 {print $2, $5}')
             total_size=$(echo "$df_output" | awk '{print $1}')
             usage_percent=$(echo "$df_output" | awk '{print $2}' | sed 's/%//')
         fi
@@ -352,7 +363,7 @@ display_full_report() {
         fi
 
         echo -e "│   $(printf "%-18s" "(${kname: -1}) $output_label") Used: ${bar_color}[${bar_text}]${usage_percent}%${no_col} ($(printf "%s" "$total_size"))"
-    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL | grep -E 'sd[a-z][0-9]|nvme' || echo "")
+    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL 2>/dev/null | grep -E 'sd[a-z][0-9]|nvme' || echo "")
     echo "╰─────────────────────────────────────────────────────╯"
 }
 
@@ -360,7 +371,7 @@ display_simple_full_report() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating simple full report"
     declare -A smart_statuses
-    local drives=$(lsblk -d -n -o KNAME | grep -E 'sd[a-z]|nvme' || echo "")
+    local drives=$(lsblk -d -n -o KNAME 2>/dev/null | grep -E 'sd[a-z]|nvme' || echo "")
     if [ -z "$drives" ]; then
         log_message "ERROR" "No drives found"
         echo -e "${yellow}No drives found${no_col}"
@@ -381,7 +392,7 @@ display_simple_full_report() {
         local total_size="N/A"
         local usage_percent="N/A"
         if [ -n "$mountpoint" ]; then
-            local df_output=$(df -hP "$mountpoint" | awk 'NR==2 {print $2, $5}' 2>/dev/null)
+            local df_output=$(df -hP "$mountpoint" 2>/dev/null | awk 'NR==2 {print $2, $5}')
             total_size=$(echo "$df_output" | awk '{print $1}')
             usage_percent=$(echo "$df_output" | awk '{print $2}' | sed 's/%//')
         fi
@@ -412,7 +423,7 @@ display_simple_full_report() {
         local status_emoji="${smart_statuses[$parent_disk]}"
 
         echo -e "│ $(printf "%-15s" "$output_label") Status: $status_emoji %: ${bar_color}[${bar_text}]${usage_percent}%${no_col} ($(printf "%s" "$total_size"))"
-    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL | grep -E 'sd[a-z][0-9]|nvme' || echo "")
+    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL 2>/dev/null | grep -E 'sd[a-z][0-9]|nvme' || echo "")
     echo "╰─────────────────────────────────────────────────────╯"
 }
 
@@ -420,7 +431,7 @@ display_simple_report() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating simple report"
     declare -A smart_statuses
-    local physical_drives=$(lsblk -d -n -o KNAME | grep -E 'sd[a-z]|nvme' || echo "")
+    local physical_drives=$(lsblk -d -n -o KNAME 2>/dev/null | grep -E 'sd[a-z]|nvme' || echo "")
     if [ -z "$physical_drives" ]; then
         log_message "ERROR" "No drives found"
         echo -e "${yellow}No drives found${no_col}"
@@ -442,7 +453,7 @@ display_simple_report() {
             fi
             echo "$output_label=$status"
         fi
-    done < <(lsblk -n -o KNAME,PKNAME,LABEL | grep -E 'sd[a-z][0-9]|nvme' || echo "")
+    done < <(lsblk -n -o KNAME,PKNAME,LABEL 2>/dev/null | grep -E 'sd[a-z][0-9]|nvme' || echo "")
 }
 
 display_single_device_full() {
@@ -450,7 +461,7 @@ display_single_device_full() {
     local MOUNTPOINT=$2
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating full report for single device $PARTITION_PATH"
-    local parent_disk=$(lsblk -n -o PKNAME "$PARTITION_PATH" | xargs)
+    local parent_disk=$(lsblk -n -o PKNAME "$PARTITION_PATH" 2>/dev/null | xargs)
     if [ -z "$parent_disk" ]; then
         log_message "ERROR" "No parent disk found for $PARTITION_PATH"
         echo -e "${yellow}No parent disk found for $PARTITION_PATH${no_col}"
@@ -464,7 +475,7 @@ display_single_device_full() {
     local total_size="N/A"
     local usage_percent="N/A"
     if [ -n "$MOUNTPOINT" ]; then
-        local df_output=$(df -hP "$MOUNTPOINT" | awk 'NR==2 {print $2, $5}' 2>/dev/null)
+        local df_output=$(df -hP "$MOUNTPOINT" 2>/dev/null | awk 'NR==2 {print $2, $5}')
         total_size=$(echo "$df_output" | awk '{print $1}')
         usage_percent=$(echo "$df_output" | awk '{print $2}' | sed 's/%//')
     fi
@@ -494,7 +505,7 @@ display_single_device_simple() {
     local PARTITION_PATH=$1
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating simple report for single device $PARTITION_PATH"
-    local parent_disk=$(lsblk -n -o PKNAME "$PARTITION_PATH" | xargs)
+    local parent_disk=$(lsblk -n -o PKNAME "$PARTITION_PATH" 2>/dev/null | xargs)
     if [ -z "$parent_disk" ]; then
         log_message "ERROR" "No parent disk found for $PARTITION_PATH"
         echo -e "${yellow}No parent disk found for $PARTITION_PATH${no_col}"
@@ -510,7 +521,7 @@ if [ -n "$MANUAL_DEVICE" ]; then
     log_message "INFO" "Checking single device $MANUAL_DEVICE"
     PARTITION_PATH=$(blkid -L "$MANUAL_DEVICE" 2>/dev/null || echo "$MANUAL_DEVICE")
     if [ -b "$PARTITION_PATH" ]; then
-        MOUNTPOINT=$(lsblk -n -o MOUNTPOINT "$PARTITION_PATH" | xargs)
+        MOUNTPOINT=$(lsblk -n -o MOUNTPOINT "$PARTITION_PATH" 2>/dev/null | xargs)
         if [ "$OUTPUT_MODE" == "full" ]; then
             display_single_device_full "$PARTITION_PATH" "$MOUNTPOINT"
         else

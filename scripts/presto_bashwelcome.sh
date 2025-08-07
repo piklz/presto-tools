@@ -18,12 +18,17 @@
 # author        : piklz
 # github        : https://github.com/piklz/presto-tools.git
 # web           : https://github.com/piklz/presto-tools.git
-# changes since : v1.0.1, 2025-08-07 (Fixed mv overwrite prompt in rotate_logs)
+# changes since : v1.0.2, 2025-08-07 (Fixed permissions for log directory/file, improved sudo handling)
 # desc          : Displays Raspberry Pi system information (CPU, disk, Docker, weather) with a colorful UI
 ##################################################################################################
 
-presto_VERSION='1.0.1'
+presto_VERSION='1.0.2'
 VERBOSE_MODE=0  # Default to prevent integer expression error
+
+# Check if running in an interactive shell
+if [[ ! -t 0 ]]; then
+    exit 0  # Silently exit in non-interactive shells
+fi
 
 # Determine real user's home directory
 USER_HOME=""
@@ -35,11 +40,14 @@ else
     USER="$(id -un)"
 fi
 
-# Set log file path
+# Set log file path and ensure permissions
 LOG_DIR="$USER_HOME/.local/state/presto"
 LOG_FILE="$LOG_DIR/presto_bashwelcome.log"
 mkdir -p "$LOG_DIR" || { echo "Error: Could not create log directory $LOG_DIR" >&2; exit 1; }
 touch "$LOG_FILE" || { echo "Error: Could not create log file $LOG_FILE" >&2; exit 1; }
+chown "$USER:$USER" "$LOG_DIR" "$LOG_FILE" 2>/dev/null || true
+chmod 755 "$LOG_DIR" 2>/dev/null || true
+chmod 644 "$LOG_FILE" 2>/dev/null || true
 
 # Color variables
 no_col="\e[0m"
@@ -67,7 +75,9 @@ log_message() {
     local console_message="$2"
     local log_file_message="${3:-$console_message}"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    printf "[%s] [presto_bashwelcome] %s %s\n" "$timestamp" "$log_level" "$log_file_message" >> "$LOG_FILE"
+    if [ -w "$LOG_FILE" ]; then
+        printf "[%s] [presto_bashwelcome] %s %s\n" "$timestamp" "$log_level" "$log_file_message" >> "$LOG_FILE"
+    fi
     # Only display errors that match original script's behavior
     if [ "$log_level" = "ERROR" ] && [[ "$console_message" =~ "not found" || "$console_message" =~ "unavailable" ]]; then
         echo -e "  ${yellow}${console_message}${no_col}"
@@ -87,10 +97,12 @@ rotate_logs() {
     log_message "INFO" "Rotating logs older than $LOG_RETENTION_DAYS days in $LOG_FILE"
     local temp_file="$LOG_DIR/presto_bashwelcome_temp.log"
     touch "$temp_file" || { log_message "ERROR" "Failed to create temporary log file $temp_file"; return 1; }
+    chown "$USER:$USER" "$temp_file" 2>/dev/null || true
+    chmod 644 "$temp_file" 2>/dev/null || true
     local cutoff_date=$(date -d "$LOG_RETENTION_DAYS days ago" '+%Y-%m-%d' 2>/dev/null)
     if [ -z "$cutoff_date" ]; then
         log_message "ERROR" "Failed to calculate cutoff date for log rotation"
-        rm -f "$temp_file"
+        rm -f "$temp_file" 2>/dev/null
         return 1
     fi
     while IFS= read -r line; do
@@ -101,7 +113,9 @@ rotate_logs() {
             echo "$line" >> "$temp_file"
         fi
     done < "$LOG_FILE"
-    mv -f "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; return 1; }
+    mv -f "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; rm -f "$temp_file" 2>/dev/null; return 1; }
+    chown "$USER:$USER" "$LOG_FILE" 2>/dev/null || true
+    chmod 644 "$LOG_FILE" 2>/dev/null || true
     log_message "INFO" "Log rotation completed"
     return 0
 }
@@ -114,7 +128,7 @@ check_disk_space() {
         return 0
     fi
     local available_space_mb
-    available_space_mb=$(df -m "$USER_HOME" | tail -1 | awk '{print $4}')
+    available_space_mb=$(df -m "$USER_HOME" 2>/dev/null | tail -1 | awk '{print $4}')
     if [ -z "$available_space_mb" ] || ! [[ "$available_space_mb" =~ ^[0-9]+$ ]]; then
         log_message "ERROR" "Failed to determine available disk space"
         return 1
@@ -145,6 +159,8 @@ WEATHER_LOCATION="London"
 SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"
 DEFAULT_OUTPUT_MODE="simple_full"
 EOF
+    chown "$USER:$USER" "$DEFAULT_CONFIG" 2>/dev/null || true
+    chmod 644 "$DEFAULT_CONFIG" 2>/dev/null || true
 fi
 log_message "INFO" "Loading default configuration from $DEFAULT_CONFIG"
 source "$DEFAULT_CONFIG"
@@ -222,12 +238,9 @@ is_command() {
 
 # Fetch weather
 log_message "INFO" "Fetching weather for ${WEATHER_LOCATION}"
-weather_info=$(timeout 4 curl -s "https://wttr.in/${WEATHER_LOCATION}?format=%l:+%c+%C+%t+feels-like+%f+\n+++++++++++++++++++phase%m++humid+%h+🌞+%S+🌇+%s+\n" 2>/dev/null)
-if [[ -n "$weather_info" ]]; then
-    echo ""
-else
+weather_info=$(timeout 4 curl -s "https://wttr.in/${WEATHER_LOCATION}?format=%l:+%c+%C+%t+feels-like+%f+\n+++++++++++++++++++phase%m++humid+%h+🌞+%S+🌇+%s+\n" 2>/dev/null || echo "..might be sunny somewhere?")
+if [[ "$weather_info" == "..might be sunny somewhere?" ]]; then
     log_message "WARNING" "Weather service [wttr.in] unavailable or timed out"
-    weather_info="..might be sunny somewhere?"
     echo -e "  The weather [wttr.in] is downright now .. continue\n"
 fi
 
@@ -239,7 +252,7 @@ print_docker_status() {
         echo -e "\n"
         return 0
     fi
-    check_disk_space || { log_message "ERROR" "Disk space check failed, skipping Docker status"; return 1; }
+    check_disk_space || { log_message "ERROR" "Disk space check failed, skipping Docker status"; echo -e "${yellow}Docker info unavailable${no_col}"; return 1; }
     log_message "INFO" "Displaying Docker status"
     echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ────────────────────────────╮"
     docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read -r type total active size reclaimable; do
@@ -257,18 +270,23 @@ print_docker_status() {
     fi
 
     # Docker Compose version check
-    CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2-)
-    LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
+    CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2- || echo "N/A")
+    LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
     LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
 
     # Docker Engine version check
-    CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
-    LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4)
+    CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo "N/A")
+    LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
     LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#v}"
 
     # Compare versions
     compare_versions() {
-        awk -v current="$1" -v latest="$2" '
+        local current="$1" latest="$2"
+        if [[ "$current" == "N/A" || "$latest" == "N/A" ]]; then
+            echo "unknown"
+            return
+        fi
+        awk -v current="$current" -v latest="$latest" '
         BEGIN {
             split(current, cur_parts, ".")
             split(latest, lat_parts, ".")
@@ -316,8 +334,8 @@ ram_usage_bar() {
         echo -e "${yellow}RAM usage unavailable${no_col}"
         return 1
     fi
-    total_ram=$(free -m | awk '/Mem:/ {print $2}')
-    used_ram=$(free -m | awk '/Mem:/ {print $3}')
+    total_ram=$(free -m | awk '/Mem:/ {print $2}' 2>/dev/null)
+    used_ram=$(free -m | awk '/Mem:/ {print $3}' 2>/dev/null)
     if [ -z "$total_ram" ] || [ -z "$used_ram" ]; then
         log_message "ERROR" "Failed to retrieve RAM usage"
         echo -e "${yellow}RAM usage unavailable${no_col}"
@@ -345,7 +363,7 @@ print_pi_drive_info() {
         echo -e "${yellow}Drive info unavailable${no_col}"
         return 1
     fi
-    check_disk_space || { log_message "ERROR" "Disk space check failed, skipping drive info"; return 1; }
+    check_disk_space || { log_message "ERROR" "Disk space check failed, skipping drive info"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Displaying Raspberry Pi drive info"
     echo -e "${magenta}\n  PI 🍓Model: ${raspberry_model}${no_col}"
     max_drive_length=15
@@ -357,7 +375,7 @@ print_pi_drive_info() {
         if [ $label_length -gt $max_label_length ]; then
             max_label_length=$label_length
         fi
-    done < <(lsblk -n -o NAME,LABEL -l | grep -v '^$' | while read -r name label; do
+    done < <(lsblk -n -o NAME,LABEL -l 2>/dev/null | grep -v '^$' | while read -r name label; do
         if [[ -n "$label" ]]; then
             echo "/dev/$name $label"
         else
@@ -368,7 +386,7 @@ print_pi_drive_info() {
     separator=$(printf '%*s' "$total_line_length" '' | tr ' ' '-')
     echo -e "  ${magenta}${separator}${no_col}"
     printf "  ${grey}%-${max_drive_length}s %6s %6s %6s %5s %-${max_label_length}s${no_col}\n" "DRIVE" "HDSIZE" "USED" "FREE" "USE%" "LABEL"
-    df -h --output=source,size,used,avail,pcent | grep "^/dev/" | while read -r line; do
+    df -h --output=source,size,used,avail,pcent 2>/dev/null | grep "^/dev/" | while read -r line; do
         drive=$(echo "$line" | awk '{print $1}')
         hdsize=$(echo "$line" | awk '{print $2}')
         used=$(echo "$line" | awk '{print $3}')
@@ -388,7 +406,7 @@ print_pi_drive_info() {
     echo -e ""
 }
 
-# Trap errors
+# Trap errors (log but don't disrupt login)
 trap 'log_message "ERROR" "Error occurred at line $LINENO: exit code $?"' ERR
 
 # System info variables
@@ -420,8 +438,14 @@ fi
 if [ "$show_smartdriveinfo" -eq 1 ]; then
     if [ -f "$USER_HOME/presto-tools/scripts/presto_drive_status.sh" ]; then
         log_message "INFO" "Running presto_drive_status.sh for SMART drive info"
-        drive_report=$(sudo "$USER_HOME/presto-tools/scripts/presto_drive_status.sh" 2>/dev/null || echo -e "${yellow}Failed to run presto_drive_status.sh${no_col}")
-        echo "$drive_report"
+        # Check if sudo is configured for passwordless execution
+        if sudo -n true 2>/dev/null; then
+            drive_report=$(sudo "$USER_HOME/presto-tools/scripts/presto_drive_status.sh" 2>/dev/null || echo -e "${yellow}Failed to run presto_drive_status.sh${no_col}")
+            echo "$drive_report"
+        else
+            log_message "ERROR" "sudo requires password, skipping presto_drive_status.sh"
+            echo -e "\n  ${yellow}SMART drive info unavailable (sudo requires password)${no_col}"
+        fi
     else
         log_message "ERROR" "presto_drive_status.sh not found"
         echo -e "\n  ${yellow}SMART drive info unavailable${no_col}"
