@@ -40,7 +40,7 @@ function print_header() {
 
 # Function to print running container names with health and ports
 function print_running_containers() {
-    echo -e "\n${white}Running Containers:${no_col}                ${white}Health  Ports${no_col}"
+    echo -e "\n${white}Running Containers:${no_col}         ${white}Health  Ports${no_col}"
     echo -e "${cyan}───────────────────────────────────────────${no_col}"
 
     # Get running container names, ports, status, and IDs
