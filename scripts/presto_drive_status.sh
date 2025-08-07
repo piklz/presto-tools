@@ -1,3 +1,4 @@
+```bash
 #!/bin/bash
 # shellcheck disable=SC1090
 #  __/\\\\\\\\\\\\\______/\\\\\\\\\______/\\\\\\\\\\\\\\\_____/\\\\\\\\\\\____/\\\\\\\\\\\\\\\_______/\\\\\______        
@@ -17,13 +18,13 @@
 # Author        : piklz
 # GitHub        : https://github.com/piklz/presto-tools.git
 # Web           : https://github.com/piklz/presto-tools.git
-# Version       : v1.0.1
-# Changes since : v1.0.1, 2025-08-07 (Added logging, config integration, disk space checks; fixed --help and SMART status)
+# Version       : v1.0.2
+# Changes since : v1.0.2, 2025-08-07 (Fixed mv overwrite prompt in rotate_logs)
 # Desc          : Monitors disk health using smartctl and usage with lsblk/df, with multiple output formats
 ##################################################################################################
 
 # Set default variables
-presto_VERSION='1.0.1'
+presto_VERSION='1.0.2'
 VERBOSE_MODE=0
 DEFAULT_OUTPUT_MODE="simple_full"
 
@@ -103,7 +104,7 @@ rotate_logs() {
             echo "$line" >> "$temp_file"
         fi
     done < "$LOG_FILE"
-    mv "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; return 1; }
+    mv -f "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; return 1; }
     log_message "INFO" "Log rotation completed"
     return 0
 }
@@ -533,3 +534,4 @@ else
             ;;
     esac
 fi
+```
