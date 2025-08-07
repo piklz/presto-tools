@@ -1,16 +1,19 @@
-#!/usr/bin/env bash
-# ────────────────────────────────────────────────────────────────────────────
+#!/bin/bash
+# -----------------------------------------------
 # Docker Container Status Script
-# Version: 2.0
+# Version: 2.9
 # Author: piklz
 # GitHub: https://github.com/piklz
-#
+# Description:
+#   This script provides a clean overview of Docker container health statistics,
+# 
 # Usage:
-#   ./presto_docker_monitor.sh           # Show full stats, running, and non-running containers
-#   ./presto_docker_monitor.sh --running-apps  # List only running container names
-#   ./presto_docker_monitor.sh --running-info  # List running containers with memory usage
-#   ./presto_docker_monitor.sh --help          # Show this help message
-# ────────────────────────────────────────────────────────────────────────────
+#   ./docker_stats.sh           # Show full stats, running containers with health/ports, and non-running containers
+#   ./docker_stats.sh --running-apps  # List running containers with health and ports
+#   ./docker_stats.sh --simple        # List only running container names (minimal)
+#   ./docker_stats.sh --warnings      # List unhealthy and starting containers with health and ports
+#   ./docker_stats.sh --help          # Show this help message
+# -----------------------------------------------
 
 # Colors for styling
 no_col="\e[0m"
@@ -35,21 +38,55 @@ function print_header() {
     echo -e "${no_col}"
 }
 
-# Function to print running container names
+# Function to print running container names with health and ports
 function print_running_containers() {
-    echo -e "\n${white}Running Containers:${no_col}"
+    echo -e "\n${white}Running Containers:${no_col}                ${white}Health  Ports${no_col}"
     echo -e "${cyan}───────────────────────────────────────────${no_col}"
 
-    # Get running container names
+    # Get running container names, ports, status, and IDs
     local containers
-    containers=$(docker ps --format '{{.Names}}')
+    containers=$(docker ps --format '{{.ID}}\t{{.Names}}\t{{.Ports}}\t{{.Status}}')
 
     if [[ -z "$containers" ]]; then
         echo -e "${yellow}No running containers found.${no_col}"
     else
-        # Print each container name
-        while IFS= read -r name; do
-            printf "${green}%s${no_col}\n" "$name"
+        # Process each container
+        while IFS=$'\t' read -r id name ports status; do
+            # Truncate name if longer than 27 characters
+            if [[ ${#name} -gt 27 ]]; then
+                name="${name:0:27}..."
+            fi
+
+            # Parse ports: extract external port or set to 'na'
+            local port_display
+            if [[ -z "$ports" ]]; then
+                port_display="na"
+            else
+                # Extract first external port (e.g., 1000 from 0.0.0.0:1000->1000/tcp)
+                port_display=$(echo "$ports" | grep -oE '[0-9]+->' | head -n1 | sed 's/->//')
+                if [[ -z "$port_display" ]]; then
+                    port_display=$(echo "$ports" | grep -oE '[0-9]+/tcp' | head -n1 | sed 's/\/tcp//')
+                fi
+                port_display=${port_display:-"na"}
+                port_display=":$port_display"
+            fi
+
+            # Determine health status emoji
+            local health_emoji
+            local health_color
+            if [[ "$status" =~ \(healthy\) ]]; then
+                health_emoji="✅"
+                health_color="${green}"
+            elif [[ "$status" =~ \(health:\ starting\) ]]; then
+                health_emoji="⏳"
+                health_color="${yellow}"
+            else
+                health_emoji="⚠️"
+                health_color="${yellow}"
+            fi
+
+            # Print with fixed column widths
+            printf "${green}%-30s${no_col} ${health_color}%1s${no_col} %6s\n" "$name" "$health_emoji" "$port_display"
         done <<< "$containers"
     fi
 }
@@ -73,35 +110,67 @@ function print_non_running_containers() {
     fi
 }
 
-# Function to print running containers with memory usage
-function print_running_info() {
-    echo -e "\n${white}Running Containers Info:${no_col}"
-    echo -e "${cyan}───────────────────────────────────────────${no_col}"
-    printf "${white}%-30s %-10s${no_col}\n" "Container Name" "Memory Used"
-
-    # Get running container names and IDs
+# Function to print only running container names (minimal)
+function print_simple() {
+    # Get running container names
     local containers
-    containers=$(docker ps --format '{{.ID}}\t{{.Names}}')
+    containers=$(docker ps --format '{{.Names}}')
 
     if [[ -z "$containers" ]]; then
         echo -e "${yellow}No running containers found.${no_col}"
     else
-        # Process each container
-        while IFS=$'\t' read -r id name; do
-            # Get memory usage from docker inspect
-            local memory_usage
-            memory_usage=$(docker inspect --format '{{.HostConfig.Memory}}' "$id")
-            if [[ "$memory_usage" == "0" || -z "$memory_usage" ]]; then
-                memory_usage="Unlimited"
-            else
-                # Convert bytes to human-readable format (MB/GB)
-                if (( memory_usage >= 1073741824 )); then
-                    memory_usage=$(awk "BEGIN {printf \"%.2f GB\", $memory_usage/1073741824}")
-                else
-                    memory_usage=$(awk "BEGIN {printf \"%.2f MB\", $memory_usage/1048576}")
-                fi
+        # Print each container name in green
+        while IFS= read -r name; do
+            printf "${green}%s${no_col}\n" "$name"
+        done <<< "$containers"
+    fi
+}
+
+# Function to print unhealthy and starting containers with health and ports
+function print_warnings() {
+    echo -e "\n${white}Unhealthy/Starting Containers:${no_col}      ${white}Health  Ports${no_col}"
+    echo -e "${cyan}───────────────────────────────────────────${no_col}"
+
+    # Get running container names, ports, status, and IDs
+    local containers
+    containers=$(docker ps --format '{{.ID}}\t{{.Names}}\t{{.Ports}}\t{{.Status}}' | grep -E '\((unhealthy|health: starting)\)')
+
+    if [[ -z "$containers" ]]; then
+        echo -e "${yellow}No unhealthy or starting containers found.${no_col}"
+    else
+        # Process each unhealthy or starting container
+        while IFS=$'\t' read -r id name ports status; do
+            # Truncate name if longer than 27 characters
+            if [[ ${#name} -gt 27 ]]; then
+                name="${name:0:27}..."
             fi
-            printf "${green}%-30s${no_col} ${cyan}%s${no_col}\n" "$name" "$memory_usage"
+
+            # Parse ports: extract external port or set to 'na'
+            local port_display
+            if [[ -z "$ports" ]]; then
+                port_display="na"
+            else
+                port_display=$(echo "$ports" | grep -oE '[0-9]+->' | head -n1 | sed 's/->//')
+                if [[ -z "$port_display" ]]; then
+                    port_display=$(echo "$ports" | grep -oE '[0-9]+/tcp' | head -n1 | sed 's/\/tcp//')
+                fi
+                port_display=${port_display:-"na"}
+                port_display=":$port_display"
+            fi
+
+            # Health emoji for unhealthy or starting
+            local health_emoji
+            local health_color
+            if [[ "$status" =~ \(health:\ starting\) ]]; then
+                health_emoji="⏳"
+                health_color="${yellow}"
+            else
+                health_emoji="⚠️"
+                health_color="${yellow}"
+            fi
+
+            # Print with fixed column widths
+            printf "${green}%-30s${no_col} ${health_color}%1s${no_col} %6s\n" "$name" "$health_emoji" "$port_display"
         done <<< "$containers"
     fi
 }
@@ -113,15 +182,17 @@ function print_help() {
     echo "Show Docker container statistics and status."
     echo ""
     echo -e "${white}Options:${no_col}"
-    echo -e "  ${cyan}--running-apps${no_col}    List only running container names"
-    echo -e "  ${cyan}--running-info${no_col}    List running containers with memory usage"
+    echo -e "  ${cyan}--running-apps${no_col}    List running containers with health and ports"
+    echo -e "  ${cyan}--simple${no_col}          List only running container names (minimal)"
+    echo -e "  ${cyan}--warnings${no_col}        List unhealthy and starting containers with health and ports"
     echo -e "  ${cyan}--help${no_col}           Show this help message"
     echo ""
     echo -e "${white}Examples:${no_col}"
-    echo "  ./presto_docker_monitor.sh              # Full stats and container lists"
-    echo "  ./presto_docker_monitor.sh --running-apps  # Only running container names"
-    echo "  ./presto_docker_monitor.sh --running-info  # Running containers with memory usage"
-    echo "  ./presto_docker_monitor.sh --help         # Show this help"
+    echo "  ./docker_stats.sh              # Full stats and container lists"
+    echo "  ./docker_stats.sh --running-apps  # Running containers with health and ports"
+    echo "  ./docker_stats.sh --simple       # Only running container names"
+    echo "  ./docker_stats.sh --warnings     # Unhealthy and starting containers with health and ports"
+    echo "  ./docker_stats.sh --help         # Show this help"
     echo -e "${cyan}───────────────────────────────────────────${no_col}"
 }
 
@@ -130,6 +201,7 @@ function print_full_stats() {
     # Calculate stats
     healthy=$(docker ps | grep -o 'healthy' | wc -l)
     unhealthy=$(docker ps | grep -o 'unhealthy' | wc -l)
+    starting=$(docker ps | grep -o 'health: starting' | wc -l)
     running=$(docker container ls -a | grep -o 'Up' | wc -l)
     created=$(docker container ls -a | grep -o 'Created' | wc -l)
     stopped=$(docker container ls -a | grep -o 'Exited' | wc -l)
@@ -142,12 +214,13 @@ function print_full_stats() {
     echo -e "${white}Docker Container Statistics:${no_col}"
     printf "%-20s: ${green}%s${no_col}\n" "Healthy" "$healthy"
     printf "%-20s: ${red}%s${no_col}\n" "Unhealthy" "$unhealthy"
+    printf "%-20s: ${yellow}%s${no_col}\n" "Starting" "$starting"
     printf "%-20s: ${green}%s${no_col}\n" "Running" "$running"
     printf "%-20s: ${yellow}%s${no_col}\n" "Created" "$created"
     printf "%-20s: ${red}%s${no_col}\n" "Stopped" "$stopped"
     printf "%-20s: ${cyan}%s${no_col}\n" "Total Containers" "$total"
 
-    # Print running container names
+    # Print running container names with health and ports
     print_running_containers
 
     # Print non-running container names
@@ -156,8 +229,8 @@ function print_full_stats() {
     # Suggest action based on stats
     if [[ $running -eq 0 ]]; then
         echo -e "\n${yellow}⚠️ No containers are currently running. Start your containers to monitor them.${no_col}"
-    elif [[ $unhealthy -gt 0 ]]; then
-        echo -e "\n${red}⚠️ Warning:${no_col} $unhealthy container(s) are unhealthy. Consider investigating."
+    elif [[ $unhealthy -gt 0 || $starting -gt 0 ]]; then
+        echo -e "\n${red}⚠️ Warning:${no_col} $unhealthy unhealthy and $starting starting container(s). Consider investigating."
     else
         echo -e "\n${green}✅ All containers are healthy.${no_col}"
     fi
@@ -176,8 +249,12 @@ case "$1" in
         print_running_containers
         exit 0
         ;;
-    --running-info)
-        print_running_info
+    --simple)
+        print_simple
+        exit 0
+        ;;
+    --warnings)
+        print_warnings
         exit 0
         ;;
     --help)
