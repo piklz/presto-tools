@@ -148,8 +148,8 @@ if [ ! -f "$DEFAULT_CONFIG" ]; then
     cat << EOF > "$DEFAULT_CONFIG"
 # Presto default configuration
 show_docker_info=1
-show_smartdriveinfo=0
-show_driveinfo=1
+show_smartdrive_info=0
+show_drive_info=1
 VERBOSE_MODE=0
 log_level="INFO"
 LOG_RETENTION_DAYS=30

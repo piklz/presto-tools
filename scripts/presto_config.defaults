@@ -2,13 +2,13 @@
 # 0 = disabled, 1 = enabled
 
 # Show Docker container information
-show_dockerinfo=0
+show_docker_info=0
 
 # Show SMART drive health information
-show_smartdriveinfo=0
+show_smartdrive_info=0
 
 # Show general drive information
-show_driveinfo=0
+show_drive_info=0
 
 VERBOSE_MODE=0
 log_level="INFO"
