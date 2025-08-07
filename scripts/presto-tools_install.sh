@@ -171,7 +171,7 @@ _complete_presto_drive_status() {
     fi
 }
 complete -F _complete_presto_drive_status presto_drive_status
-complete -F _complete_presto_drive_status "\$USER_HOME/presto-tools/scripts/presto_drive_status.sh"
+complete -F _complete_presto_drive_status "$USER_HOME/presto-tools/scripts/presto_drive_status.sh"
 EOF
 }
 
