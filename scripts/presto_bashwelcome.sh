@@ -434,7 +434,7 @@ else
     echo -e "\n  ${grey_dim}Docker status display skipped as per user preference.${no_col}"
 fi
 
-if [ "$show_smartdriveinfo" -eq 1 ]; then
+if [ "$show_smartdrive_info" -eq 1 ]; then
     if [ -f "$USER_HOME/presto-tools/scripts/presto_drive_status.sh" ]; then
         log_message "INFO" "Running presto_drive_status.sh for SMART drive info"
         # Check if sudo is configured for passwordless execution
@@ -454,7 +454,7 @@ else
     echo -e "\n  ${grey_dim}Drive smart information display skipped as per user preference.${no_col}"
 fi
 
-if [ "$show_driveinfo" -eq 1 ]; then
+if [ "$show_drive_info" -eq 1 ]; then
     print_pi_drive_info
 else
     log_message "INFO" "Drive info display skipped as per user preference"
