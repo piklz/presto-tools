@@ -1,0 +1,75 @@
+#----presto scripts
+alias presto_up="docker compose -f ~/presto/docker-compose.yml up -d"
+alias presto_down="docker compose -f ~/presto/docker-compose.yml down"
+alias presto_start="docker compose -f ~/presto/docker-compose.yml start"
+alias presto_stop="docker compose -f ~/presto/docker-compose.yml stop"
+alias presto_update="docker compose -f ~/presto/docker-compose.yml pull"
+alias presto_build="docker compose -f ~/presto/docker-compose.yml build"
+alias presto_status="docker ps --format \"table {{.Names}}\t|   {{.State}}\t|   {{.Status}}\""
+alias presto_upgrade-pi-sys="sudo apt update -y && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt clean -y && sudo apt autoclean -y"
+alias presto_status_usage="docker stats --all "
+alias presto_status_usage2="docker stats --all --format \"table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\""
+alias presto_dusummary="du -h -s -c  *"
+alias presto_engine_update="~/presto-tools/scripts/presto_docker-engine_update.sh"
+alias presto_prune_images="~/presto/scripts/prune-images.sh"
+alias presto_prune_volumes="~/presto/scripts/prune-volumes.sh"
+alias presto_drive_status="sudo ~/presto-tools/scripts/presto_drive_status.sh"
+alias presto_docker_monitor="~/presto-tools/scripts/presto_docker_monitor.sh"
+alias presto_launchmenu="~/presto/presto_launch.sh"
+alias presto_usb_install="sudo ~/presto-tools/scripts/presto_usb_install.sh"
+
+
+
+
+
+#my  rsync cp... replacing cp command + added progress bar!
+alias cpv="rsync -ah --info=progress2"
+
+#----System stuff
+## Colorize the ls output ##
+alias ls='ls --color=auto'
+ 
+## Use a long listing format ##
+alias ll='ls -la'
+ 
+## Show hidden files ##
+alias l.='ls -d .* --color=auto'
+
+
+## get rid of command not found ##
+alias cd..='cd ..'
+## a quick way to get out of current directory ##
+alias ..='cd ..'
+alias ...='cd ../../../'
+alias ....='cd ../../../../'
+alias .....='cd ../../../../'
+
+# handy short cuts #
+alias h='history'
+alias j='jobs -l'
+
+#Use netstat command to quickly list all TCP/UDP port on the server:
+alias ports='netstat -tulanp'
+
+# do not delete / or prompt if deleting more than 3 files at a time #
+alias rm='rm -I --preserve-root'
+ 
+# confirmation #
+alias mv='mv -i'
+alias cp='cp -i'
+alias ln='ln -i'
+ 
+# Parenting changing perms on / #
+alias chown='chown --preserve-root'
+alias chmod='chmod --preserve-root'
+alias chgrp='chgrp --preserve-root'
+
+## get top process eating memory
+alias psmem='ps auxf | sort -nr -k 4'
+alias psmem10='ps auxf | sort -nr -k 4 | head -10'
+ 
+## get top process eating cpu ##
+alias pscpu='ps auxf | sort -nr -k 3'
+alias pscpu10='ps auxf | sort -nr -k 3 | head -10'
+
+
