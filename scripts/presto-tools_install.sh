@@ -241,8 +241,8 @@ log_message "INFO" "Log file written to: $LOG_FILE"
 
 
 
-# presto-tools_install.sh
-# Installs presto-tools and sets up configurations, including bash aliases
+
+# Installs presto-tools and sets up configurations, including bash aliases and welcome script
 
 # Set up directory
 INSTALL_DIR="$HOME/presto-tools"
@@ -285,35 +285,37 @@ setup_bash_aliases() {
         # Check if .bash_aliases exists
         if [ ! -f "$BASH_ALIASES" ]; then
             echo "Creating new .bash_aliases file..."
-            cp "$temp_alias_file" "$BASH_ALIASES"
+            echo "# Source presto-tools aliases" > "$BASH_ALIASES"
+            echo ". $INSTALL_DIR/scripts/.presto_bash_aliases" >> "$BASH_ALIASES"
         else
-            echo "Appending presto-tools aliases to existing .bash_aliases..."
-            # Append only new aliases to avoid duplicates
-            while IFS= read -r line; do
-                if [[ $line == alias* ]]; then
-                    alias_name=$(echo "$line" | cut -d'=' -f1 | cut -d' ' -f2)
-                    if ! grep -q "alias $alias_name=" "$BASH_ALIASES"; then
-                        echo "$line" >> "$BASH_ALIASES"
-                    fi
-                fi
-            done < "$temp_alias_file"
+            echo "Updating .bash_aliases to source presto-tools aliases..."
+            # Ensure .bash_aliases sources .presto_bash_aliases
+            if ! grep -q ". $INSTALL_DIR/scripts/.presto_bash_aliases" "$BASH_ALIASES"; then
+                echo "# Source presto-tools aliases" >> "$BASH_ALIASES"
+                echo ". $INSTALL_DIR/scripts/.presto_bash_aliases" >> "$BASH_ALIASES"
+            fi
         fi
         rm "$temp_alias_file"
     else
-        echo "Warning: bash_aliases file not found in $INSTALL_DIR/scripts/"
-    fi
-
-    # Ensure .bash_aliases is sourced in .bashrc
-    BASHRC="$HOME/.bashrc"
-    if ! grep -q "source $BASH_ALIASES" "$BASHRC"; then
-        echo "Adding .bash_aliases to .bashrc..."
-        echo -e "\n# Source presto-tools aliases" >> "$BASHRC"
-        echo "[ -f $BASH_ALIASES ] && source $BASH_ALIASES" >> "$BASHRC"
+        echo "Warning: .presto_bash_aliases file not found in $INSTALL_DIR/scripts/"
     fi
 }
+
+# Set up presto_bashwelcome.sh in .bashrc
+BASHRC="$HOME/.bashrc"
+WELCOME_SCRIPT="$INSTALL_DIR/scripts/presto_bashwelcome.sh"
+if [ -f "$WELCOME_SCRIPT" ]; then
+    if ! grep -q ". $WELCOME_SCRIPT" "$BASHRC"; then
+        echo "Adding presto_bashwelcome.sh to .bashrc..."
+        echo -e "\n#presto-tools Added: presto_bash_welcome script" >> "$BASHRC"
+        echo ". $WELCOME_SCRIPT" >> "$BASHRC"
+    fi
+else
+    echo "Warning: presto_bashwelcome.sh not found in $INSTALL_DIR/scripts/"
+fi
 
 # Run alias setup during installation
 setup_bash_aliases
 
 echo "Presto-tools installation complete!"
-echo "Please run 'source ~/.bashrc' or start a new terminal to use the aliases."
+echo "Please run 'source ~/.bashrc' or start a new terminal to use the aliases and welcome script."
