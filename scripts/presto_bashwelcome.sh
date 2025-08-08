@@ -253,7 +253,7 @@ print_docker_status() {
     fi
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping Docker status"; echo -e "${yellow}Docker info unavailable${no_col}"; return 1; }
     log_message "INFO" "Displaying Docker status"
-    echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ────────────────────────────╮"
+    echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ─────────────────PRESTO─────╮"
     echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE       ${green}RECLAIMABLE${no_col}"
     docker_filesystem_status=$(docker system df | awk '
         NR>1 {
@@ -494,7 +494,7 @@ printf " %-3s ${white}%-13s${no_col}  %s\n" " ${calendar}" "Date:" "${date_part}
 printf "%s%s\n" "$(printf '%*s' 22)" "${timezone_part}"
 
 
-echo -e "\n"
+#echo -e "\n"
 
 fan_input_path=$(find /sys/devices/platform/ -name "fan1_input" 2>/dev/null)
 if [[ -n "$fan_input_path" ]]; then
