@@ -237,10 +237,10 @@ is_command() {
 
 # Fetch weather
 log_message "INFO" "Fetching weather for ${WEATHER_LOCATION}"
-weather_info=$(timeout 4 curl -s "https://wttr.in/${WEATHER_LOCATION}?format=%l:+%c+%C+%t+feels-like+%f+\n+++++++++++++++++++phase%m++humid+%h+🌞+%S+🌇+%s+\n" 2>/dev/null || echo "..might be sunny somewhere?")
+weather_info=$(timeout 4 curl -s "https://wttr.in/${lgt_green_inv}${WEATHER_LOCATION}${no_col}?format=%l:+%c+%C+%t+feels-like+%f+\n+++++++++++++++++++phase%m++humid+%h+🌞+%S+🌇+%s+\n" 2>/dev/null || echo "..might be sunny somewhere?")
 if [[ "$weather_info" == "..might be sunny somewhere?" ]]; then
     log_message "WARNING" "Weather service [wttr.in] unavailable or timed out"
-    echo -e "  The weather [wttr.in] is downright now .. continue\n"
+    echo -e "  ${grey_dim}The weather [wttr.in] is downright now .. continue${no_col}\n"
 fi
 
 print_docker_status() {
@@ -254,16 +254,28 @@ print_docker_status() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping Docker status"; echo -e "${yellow}Docker info unavailable${no_col}"; return 1; }
     log_message "INFO" "Displaying Docker status"
     echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ────────────────────────────╮"
-    docker_filesystem_status=$(docker system df | awk '{print $1, $2, $3, $4, $5, $6}' | while read -r type total active size reclaimable; do
-        printf "  %-12s ${cyan}%-8s ${magenta}%-8s ${white}%-8s ${green}%-8s\n" "$type" "$total" "$active" "$size" "$reclaimable"
+    echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE       ${green}RECLAIMABLE${no_col}"
+    docker_filesystem_status=$(docker system df | awk '
+        NR>1 {
+            if ($1 == "Local" && $2 == "Volumes") {
+                print "Local Volumes " $3 " " $4 " " $5 " " $6
+            }
+            else if ($1 == "Build" && $2 == "Cache") {
+                print "Build Cache " $3 " " $4 " " $5
+            }
+            else {
+                print $1 " " $2 " " $3 " " $4 " " $5
+            }
+        }' | while read -r type total active size reclaimable; do
+        printf "  %-12s ${cyan}%-8s ${magenta}%-8s ${white}%-10s ${green}%-12s\n" "$type" "$total" "$active" "$size" "$reclaimable"
     done)
-    echo -e "${docker_filesystem_status} "
+    echo -e "${docker_filesystem_status}"
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
 
     log_message "INFO" "Checking Docker and Compose versions"
     if ! timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest >/dev/null 2>&1; then
         log_message "WARNING" "GitHub API unavailable, skipping version check"
-        echo -e "${red}  Docker ver checker down right now .. continue try login later${no_col}"
+        echo -e "${red}  Docker (apt) ver checker down right now .. continue${no_col}"
         echo -e "\n"
         return 0
     fi
@@ -422,10 +434,10 @@ running_processes=$(ps aux 2>/dev/null | wc -l || echo "N/A")
 raspberry_model=$(cat /proc/device-tree/compatible 2>/dev/null | awk -v RS='\0' 'NR==1' || echo "N/A")
 
 # Display system info
-echo -e ""
+#echo -e ""
 #printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "" "Raspberry Pi SysInfo"
 #printf "  %-3s ${white}%-13s${no_col} %s" "──────────────────────────────────────────"
-echo -e "\n"
+#echo -e "\n"
 
 if [ "$show_docker_info" -eq 1 ]; then
     print_docker_status
@@ -451,14 +463,14 @@ if [ "$show_smartdrive_info" -eq 1 ]; then
     fi
 else
     log_message "INFO" "SMART drive info display skipped as per user preference"
-    echo -e "\n  ${grey_dim}Drive smart information display skipped as per user preference.${no_col}"
+    echo -e "\n  ${grey_dim}Drive smart information display skipped by user preference.${no_col}"
 fi
 
 if [ "$show_drive_info" -eq 1 ]; then
     print_pi_drive_info
 else
     log_message "INFO" "Drive info display skipped as per user preference"
-    echo -e "\n  ${grey_dim}Drive blkid information display skipped as per user preference.${no_col}"
+    echo -e "\n  ${grey_dim}Drive blkid information display skipped by user preference.${no_col}"
 fi
 
 
@@ -507,7 +519,7 @@ else
     printf "  %-3s ${cyan}%-13s${no_col} ${red}%s\n" "${gpu}" "GPU Temp:" "$gpu_temp"
 fi
 
-printf "  %-3s ${blue}%-13s${no_col} ${blue}%s\n" "${house}" "Internal IP:" "$internal_ip"
+printf "  %-3s ${blue}%-13s${no_col} ${blue}${no_col}%s\n" "${house}" "Internal IP:" "$internal_ip"
 printf "  %-3s ${magenta_dim}%-13s${no_col} %s\n" "${globe}" "External IP:" "$external_ip"
 printf "  %-3s ${yellow}%-15s${no_col} ${yellow}%s\n" "${clock}" "Uptime┐" "$uptime"
 printf "  %-3s ${yellow}%-13s${no_col} %s\n" "${timer}" "  Processes:" "$running_processes"
