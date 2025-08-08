@@ -235,3 +235,85 @@ install_presto_completion
 
 # --- Final message confirming log file location ---
 log_message "INFO" "Log file written to: $LOG_FILE"
+
+
+
+
+
+
+# presto-tools_install.sh
+# Installs presto-tools and sets up configurations, including bash aliases
+
+# Set up directory
+INSTALL_DIR="$HOME/presto-tools"
+mkdir -p "$INSTALL_DIR"
+
+# Clone or update the repository
+if [ -d "$INSTALL_DIR/.git" ]; then
+    echo "Updating presto-tools repository..."
+    cd "$INSTALL_DIR" || exit
+    git pull origin main
+else
+    echo "Cloning presto-tools repository..."
+    git clone https://github.com/piklz/presto-tools "$INSTALL_DIR"
+fi
+
+# Ensure scripts are executable
+chmod +x "$INSTALL_DIR/scripts/presto-tools_install.sh"
+chmod +x "$INSTALL_DIR/scripts/presto_bashwelcome.sh"
+chmod +x "$INSTALL_DIR/scripts/presto_update_full.py"
+
+# Function to set up .bash_aliases
+setup_bash_aliases() {
+    local include_presto="$1"
+    BASH_ALIASES="$HOME/.bash_aliases"
+    ALIAS_FILE="$INSTALL_DIR/scripts/bash_aliases"
+
+    if [ -f "$ALIAS_FILE" ]; then
+        echo "Setting up bash aliases..."
+        # Create temporary alias file based on arguments
+        temp_alias_file=$(mktemp)
+        cp "$ALIAS_FILE" "$temp_alias_file"
+
+        # If --include-presto is passed or presto directory exists, ensure presto aliases
+        if [ "$include_presto" = "--include-presto" ] || [ -d "$HOME/presto" ]; then
+            if ! grep -q "alias presto-launch=" "$temp_alias_file"; then
+                echo "alias presto-launch='bash ~/presto/scripts/presto_launch.sh'" >> "$temp_alias_file"
+            fi
+        fi
+
+        # Check if .bash_aliases exists
+        if [ ! -f "$BASH_ALIASES" ]; then
+            echo "Creating new .bash_aliases file..."
+            cp "$temp_alias_file" "$BASH_ALIASES"
+        else
+            echo "Appending presto-tools aliases to existing .bash_aliases..."
+            # Append only new aliases to avoid duplicates
+            while IFS= read -r line; do
+                if [[ $line == alias* ]]; then
+                    alias_name=$(echo "$line" | cut -d'=' -f1 | cut -d' ' -f2)
+                    if ! grep -q "alias $alias_name=" "$BASH_ALIASES"; then
+                        echo "$line" >> "$BASH_ALIASES"
+                    fi
+                fi
+            done < "$temp_alias_file"
+        fi
+        rm "$temp_alias_file"
+    else
+        echo "Warning: bash_aliases file not found in $INSTALL_DIR/scripts/"
+    fi
+
+    # Ensure .bash_aliases is sourced in .bashrc
+    BASHRC="$HOME/.bashrc"
+    if ! grep -q "source $BASH_ALIASES" "$BASHRC"; then
+        echo "Adding .bash_aliases to .bashrc..."
+        echo -e "\n# Source presto-tools aliases" >> "$BASHRC"
+        echo "[ -f $BASH_ALIASES ] && source $BASH_ALIASES" >> "$BASHRC"
+    fi
+}
+
+# Run alias setup during installation
+setup_bash_aliases
+
+echo "Presto-tools installation complete!"
+echo "Please run 'source ~/.bashrc' or start a new terminal to use the aliases."
