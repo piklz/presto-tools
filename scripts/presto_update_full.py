@@ -1,114 +1,275 @@
 #!/usr/bin/env python3
-import subprocess
-import sys
+
+#  __/\\\\\\\\\\\\\______/\\\\\\\\\______/\\\\\\\\\\\\\\\_____/\\\\\\\\\\\____/\\\\\\\\\\\\\\\_______/\\\\\______        
+#   _\/\\\/////////\\\__/\\\///////\\\___\/\\\///////////____/\\\/////////\\\_\///////\\\/////______/\\\///\\\____       
+#    _\/\\\_______\/\\\_\/\\\_____\/\\\___\/\\\______________\//\\\______\///________\/\\\_________/\\\/__\///\\\__      
+#     _\/\\\\\\\\\\\\\/__\/\\\\\\\\\\\/____\/\\\\\\\\\\\_______\////\\\_______________\/\\\________/\\\______\//\\\_     
+#      _\/\\\/////////____\/\\\//////\\\____\/\\\///////___________\////\\\____________\/\\\_______\/\\\_______\/\\\_    
+#       _\/\\\_____________\/\\\____\//\\\___\/\\\_____________________\////\\\_________\/\\\_______\//\\\______/\\\__   
+#        _\/\\\_____________\/\\\_____\//\\\__\/\\\______________/\\\______\//\\\________\/\\\________\///\\\__/\\\____  
+#         _\/\\\_____________\/\\\______\//\\\_\/\\\\\\\\\\\\\\\_\///\\\\\\\\\\\/_________\/\\\__________\///\\\\\/_____ 
+#          _\///______________\///________\///__\///////////////____\///////////___________\///_____________\/////_______
+
+##################################################################################################
+#-------------------------------------------------------------------------------------------------
+# presto_update_full.py - Automatically update Docker containers and prune images
+#--------------------------------------------------------------------------------------------------
+# Author        : piklz
+# GitHub        : https://github.com/piklz/presto-tools
+# Web           : https://github.com/piklz/presto-tools
+# Version       : v1.0.6
+# Changes since : v1.0.6, 2025-08-08 (Added detailed change reporting for Docker Compose updates)
+# Desc          : Checks for Docker Compose changes, updates containers using a task sequence, and prunes images
+##################################################################################################
+
 import os
-from datetime import datetime
+import subprocess
+import argparse
+import datetime
+import sys
+import shutil
+from pathlib import Path
 
-# --- Configuration ---
-LOG_DIR = f"/home/{os.environ['USER']}/presto/logs/"
-RETRY_LIMIT = 3
-BAR_LENGTH = 40
+# ANSI color codes for terminal output
+COLOR_GREEN = "\033[92m"
+COLOR_RED = "\033[91m"
+COLOR_YELLOW = "\033[93m"
+COLOR_RESET = "\033[0m"
 
-# Task steps with messages and emojis
+# Global variables
+USER_HOME = os.path.expanduser("~")
+INSTALL_DIR = os.path.join(USER_HOME, "presto-tools")
+PRESTO_DIR = os.path.join(USER_HOME, "presto")
+LOG_DIR = os.path.join(USER_HOME, ".local/state/presto")
+LOG_FILE = None
+DOCKER_COMPOSE_FILE = os.path.join(PRESTO_DIR, "docker-compose.yml")
+
+# Task list for container operations
 TASKS = [
-    {"command": "docker compose down", "message": "Stopping containers... ⏹️"},
-    {"command": "docker compose pull", "message": "Pulling Docker images... ⬇️"},
-    {"command": "docker compose build", "message": "Building Docker images... 🛠️"},
-    {"command": "docker compose up -d --remove-orphans", "message": "Starting containers... 🟢"},
+    {"command": f"docker compose -f {DOCKER_COMPOSE_FILE} down", "message": "Stopping containers... ⏹️"},
+    {"command": f"docker compose -f {DOCKER_COMPOSE_FILE} pull", "message": "Pulling Docker images... ⬇️"},
+    {"command": f"docker compose -f {DOCKER_COMPOSE_FILE} build", "message": "Building Docker images... 🛠️"},
+    {"command": f"docker compose -f {DOCKER_COMPOSE_FILE} up -d --remove-orphans", "message": "Starting containers... 🟢"},
     {"command": "docker image prune -a -f", "message": "Pruning unused images... 🗑️"}
 ]
 
-# Create logs directory
-os.makedirs(LOG_DIR, exist_ok=True)
-log_file = os.path.join(LOG_DIR, f"docker_update_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+def set_log_file_path():
+    """Determine the correct log file path based on permissions."""
+    global LOG_FILE
+    if os.geteuid() == 0:
+        LOG_FILE = "/var/log/presto_update_full.log"
+    else:
+        LOG_FILE = os.path.join(LOG_DIR, "presto_update_full.log")
+        os.makedirs(LOG_DIR, exist_ok=True)
+        if not os.access(LOG_DIR, os.W_OK):
+            print(f"{COLOR_RED}Error: Cannot write to log directory '{LOG_DIR}'.{COLOR_RESET}", file=sys.stderr)
+            sys.exit(1)
+    
+    try:
+        Path(LOG_FILE).touch()
+        if not os.access(LOG_FILE, os.W_OK):
+            print(f"{COLOR_RED}Error: Cannot write to log file '{LOG_FILE}'.{COLOR_RESET}", file=sys.stderr)
+            sys.exit(1)
+    except Exception as e:
+        print(f"{COLOR_RED}Error: Could not create or write to log file '{LOG_FILE}': {e}{COLOR_RESET}", file=sys.stderr)
+        sys.exit(1)
 
-# --- Utility Functions ---
-def log_and_print(message, color_code=None):
-    """Log messages to both console and log file."""
-    if color_code:
-        message = f"\033[{color_code}m{message}\033[0m"
-    print(message)
-    with open(log_file, "a") as log:
-        log.write(message + "\n")
+def log_message(message, level="INFO"):
+    """Log a message to the log file with a timestamp."""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = f"[{timestamp}] {level}: {message}"
+    try:
+        with open(LOG_FILE, "a") as f:
+            f.write(log_entry + "\n")
+    except Exception as e:
+        print(f"{COLOR_RED}Error: Failed to write to log file '{LOG_FILE}': {e}{COLOR_RESET}", file=sys.stderr)
 
-def progress_bar(current, total):
-    progress = int(BAR_LENGTH * current / total)
-    bar = "█" * progress + "-" * (BAR_LENGTH - progress)
-    sys.stdout.write(f"\r|{bar}| {current}/{total} tasks completed")
-    sys.stdout.flush()
-
-# --- Change Directory and Check User ---
-try:
-    current_user = os.environ['USER']
-    log_and_print(f"Current user: {current_user}")
-    os.chdir(f"/home/{current_user}/presto/scripts/")
-except KeyError:
-    log_and_print("Error: USER environment variable not set.")
-    sys.exit(1)
-except FileNotFoundError:
-    log_and_print("Error: Directory '/home/{current_user}/presto/scripts/' does not exist.")
-    sys.exit(1)
-
-def run_command_with_retries(cmd, capture_output=False):
-    """Run a shell command with retries."""
-    for attempt in range(1, RETRY_LIMIT + 1):
-        log_and_print(f"\nAttempt {attempt}/{RETRY_LIMIT}: {cmd}", color_code="36")
-        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-
-        captured_output = [] if capture_output else None
-        while True:
-            output = process.stdout.readline()
-            if not output and process.poll() is not None:
-                break
-            if output.strip():
-                log_and_print(output.strip())
-                if capture_output:
-                    captured_output.append(output.strip())
-
-        if process.returncode == 0:
-            log_and_print(f"✅ Command succeeded", color_code="32")
-            return True, "\n".join(captured_output) if capture_output else True
-        log_and_print("⚠️ Command failed. Retrying...", color_code="33")
-
-    log_and_print("❌ Command failed after all retries", color_code="31")
-    return False, None if capture_output else False
-
-# --- Main Execution ---
-try:
-    log_and_print("\n[PRESTO] Starting Docker update tasks...\n", color_code="34")
-    log_and_print("=" * 50, color_code="34")
-
-    total_tasks = len(TASKS)
-    completed_tasks = 0
-    prune_output = ""
-
-    for i, task in enumerate(TASKS, start=1):
-        log_and_print(f"\nTask {i}/{total_tasks}: {task['message']}", color_code="36")
-        progress_bar(i - 1, total_tasks)  # Update progress bar for the previous step
-
-        if "docker image prune" in task["command"]:
-            success, output = run_command_with_retries(task["command"], capture_output=True)
-            if success:
-                prune_output = output
-        else:
-            if not run_command_with_retries(task["command"]):
+def run_command(command, check=True, stream_output=False):
+    """Run a shell command, optionally streaming output to terminal."""
+    log_message(f"Executing command: {command}")
+    try:
+        if stream_output:
+            process = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1
+            )
+            stdout_lines = []
+            stderr_lines = []
+            
+            # Stream output in real-time
+            while True:
+                stdout_line = process.stdout.readline()
+                stderr_line = process.stderr.readline()
+                
+                if stdout_line:
+                    print(stdout_line, end="")
+                    stdout_lines.append(stdout_line)
+                if stderr_line:
+                    print(stderr_line, end="", file=sys.stderr)
+                    stderr_lines.append(stderr_line)
+                
+                if process.poll() is not None and not stdout_line and not stderr_line:
+                    break
+            
+            # Wait for process to complete with timeout
+            process.wait(timeout=300)
+            
+            if check and process.returncode != 0:
+                error_msg = f"Command '{command}' failed with exit code {process.returncode}: {''.join(stderr_lines)}"
+                log_message(error_msg, "ERROR")
+                print(f"{COLOR_RED}{error_msg}{COLOR_RESET}", file=sys.stderr)
                 sys.exit(1)
+            
+            return "".join(stdout_lines).strip(), "".join(stderr_lines).strip()
+        
+        else:
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            if check and result.returncode != 0:
+                error_msg = f"Command '{command}' failed with exit code {result.returncode}: {result.stderr}"
+                log_message(error_msg, "ERROR")
+                print(f"{COLOR_RED}{error_msg}{COLOR_RESET}", file=sys.stderr)
+                sys.exit(1)
+            return result.stdout.strip(), result.stderr.strip()
+    
+    except subprocess.TimeoutExpired:
+        error_msg = f"Command '{command}' timed out after 300 seconds"
+        log_message(error_msg, "ERROR")
+        print(f"{COLOR_RED}{error_msg}{COLOR_RESET}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        error_msg = f"Error executing command '{command}': {e}"
+        log_message(error_msg, "ERROR")
+        print(f"{COLOR_RED}{error_msg}{COLOR_RESET}", file=sys.stderr)
+        sys.exit(1)
 
-        completed_tasks += 1
-        progress_bar(completed_tasks, total_tasks)  # Update progress bar for the current step
+def check_docker_compose_changes():
+    """Check for changes in Docker Compose configuration."""
+    log_message("Checking for Docker Compose changes")
+    print(f"{COLOR_YELLOW}Checking for Docker Compose changes...{COLOR_RESET}")
+    if not os.path.isfile(DOCKER_COMPOSE_FILE):
+        error_msg = f"Docker Compose file '{DOCKER_COMPOSE_FILE}' not found"
+        log_message(error_msg, "ERROR")
+        print(f"{COLOR_RED}{error_msg}{COLOR_RESET}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        stdout, stderr = run_command(f"docker compose -f {DOCKER_COMPOSE_FILE} config --images")
+        log_message("Docker Compose config checked successfully")
+        # Split output into list of images, stripping whitespace
+        images = [line.strip() for line in stdout.splitlines() if line.strip()]
+        return images
+    except SystemExit:
+        log_message("Failed to check Docker Compose config", "ERROR")
+        raise
 
-    log_and_print("\n\n✅ All Docker tasks completed successfully!", color_code="32")
-    log_and_print("=" * 50, color_code="34")
+def compare_images(before, after):
+    """Compare two lists of images and return differences."""
+    changes = []
+    before_set = set(before)
+    after_set = set(after)
+    
+    # Images added or updated
+    for image in after_set:
+        if image not in before_set:
+            changes.append(f"Image {image} added or updated")
+    
+    # Images removed
+    for image in before_set:
+        if image not in after_set:
+            changes.append(f"Image {image} removed")
+    
+    return changes
 
-finally:
-    pass
+def run_container_tasks(interactive=False):
+    """Run the sequence of container tasks, with optional interactive pruning."""
+    log_message("Starting container tasks")
+    print(f"{COLOR_YELLOW}Updating Docker containers...{COLOR_RESET}")
+    
+    for task in TASKS:
+        # Handle pruning task interactively if requested
+        if task["command"].startswith("docker image prune") and interactive:
+            response = input(f"{COLOR_YELLOW}Do you want to prune unused Docker images? (y/n): {COLOR_RESET}").strip().lower()
+            if response != 'y':
+                log_message("User skipped Docker image pruning")
+                print(f"{COLOR_YELLOW}Skipping Docker image pruning.{COLOR_RESET}")
+                continue
+        
+        log_message(f"Running task: {task['message']}")
+        print(f"{COLOR_YELLOW}{task['message']}{COLOR_RESET}")
+        
+        # Stream output only for pruning task
+        stream_output = task["command"].startswith("docker image prune")
+        try:
+            stdout, stderr = run_command(task["command"], stream_output=stream_output)
+            log_message(f"Task completed: {task['message']}")
+            print(f"{COLOR_GREEN}Task completed successfully.{COLOR_RESET}")
+            
+            # Check for no pruning needed
+            if task["command"].startswith("docker image prune"):
+                if "Total reclaimed space: 0B" in stdout or not stdout.strip():
+                    log_message("No images pruned, system already clean")
+                    print(f"{COLOR_GREEN}Pruning finished, didn’t need to, already clean! ✨{COLOR_RESET}")
+        
+        except SystemExit:
+            log_message(f"Task failed: {task['message']}", "ERROR")
+            raise
 
-# --- Final Log and Summary ---
-log_and_print(f"\nLogs saved to: {log_file}", color_code="36")
-log_and_print("\nSummary:", color_code="34")
-if prune_output:
-    log_and_print(f"✅ {prune_output}", color_code="33")
-else:
-    log_and_print("✅ Total reclaimed space: 0B", color_code="33")
+def main():
+    """Main function to check and update Docker containers."""
+    parser = argparse.ArgumentParser(description="Update Docker containers and prune images")
+    parser.add_argument("--interactive", action="store_true", help="Run image pruning interactively")
+    args = parser.parse_args()
 
-log_and_print("\nScript finished. 🚀", color_code="32")
+    # Set up logging
+    set_log_file_path()
+    log_message("Starting presto_update_full.py")
+
+    # Check if Docker is available
+    if not shutil.which("docker"):
+        error_msg = "Docker is not installed or not in PATH"
+        log_message(error_msg, "ERROR")
+        print(f"{COLOR_RED}{error_msg}{COLOR_RESET}", file=sys.stderr)
+        sys.exit(1)
+
+    # Check Docker Compose changes
+    config_before = check_docker_compose_changes()
+    
+    # Prompt user to update
+    response = input(f"{COLOR_YELLOW}Do you want to update Docker containers? (y/n): {COLOR_RESET}").strip().lower()
+    if response == 'y':
+        run_container_tasks(args.interactive)
+        config_after = check_docker_compose_changes()
+        if config_before != config_after:
+            changes = compare_images(config_before, config_after)
+            change_message = "Docker Compose configuration changed after update:\n  " + "\n  ".join(changes)
+            log_message(change_message)
+            print(f"{COLOR_YELLOW}{change_message}{COLOR_RESET}")
+        else:
+            log_message("No changes in Docker Compose configuration after update")
+            print(f"{COLOR_YELLOW}No changes in Docker Compose configuration after update.{COLOR_RESET}")
+    else:
+        log_message("User skipped Docker container update")
+        print(f"{COLOR_YELLOW}Skipping Docker container update.{COLOR_RESET}")
+
+    log_message("presto_update_full.py completed")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        log_message("Script interrupted by user", "WARNING")
+        print(f"{COLOR_RED}Script interrupted by user.{COLOR_RESET}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        log_message(f"Unexpected error: {e}", "ERROR")
+        print(f"{COLOR_RED}Unexpected error: {e}{COLOR_RESET}", file=sys.stderr)
+        sys.exit(1)
