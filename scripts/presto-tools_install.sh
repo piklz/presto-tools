@@ -267,7 +267,7 @@ chmod +x "$INSTALL_DIR/scripts/presto_update_full.py"
 setup_bash_aliases() {
     local include_presto="$1"
     BASH_ALIASES="$HOME/.bash_aliases"
-    ALIAS_FILE="$INSTALL_DIR/scripts/bash_aliases"
+    ALIAS_FILE="$INSTALL_DIR/scripts/.presto_bash_aliases"
 
     if [ -f "$ALIAS_FILE" ]; then
         echo "Setting up bash aliases..."
