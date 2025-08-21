@@ -12,16 +12,36 @@
 
 ##################################################################################################
 #-------------------------------------------------------------------------------------------------
-# Welcome to the presto TOOLS INSTALL SCRIPT
-#--------------------------------------------------------------------------------------------------
-# author        : piklz
-# github        : https://github.com/piklz/presto-tools.git
-# web           : https://github.com/piklz/presto-tools.git
-# changes since : v1.0.2, 2025-08-07 (Fixed permissions for log directory/file, improved sudo handling)
-# desc          : Displays Raspberry Pi system information (CPU, disk, Docker, weather) with a colorful UI
-##################################################################################################
+# presto-tools Welcome Script
+# Version: 1.0.3
+# Author: piklz
+# GitHub: https://github.com/piklz/presto-tools.git
+# Description:
+#   Displays a colorful system information dashboard for Raspberry Pi, including CPU/GPU temperatures, disk usage,
+#   Docker status, and weather. Customizable via a configuration file. Logs to systemd-journald, with rotation
+#   managed by journald (compatible with future log2ram integration).
+#
+# Changelog:
+#   Version 1.0.3 (2025-08-21):
+#     - Fixed is_command not found error by moving function definition before log_message.
+#   Version 1.0.2 (2025-08-07):
+#     - Fixed permissions for log directory/file, improved sudo handling.
+#   Version 1.0.1 (2025-07-15):
+#     - Added weather fetching with wttr.in, improved error handling for network issues.
+#   Version 1.0.0 (2025-06-30):
+#     - Initial release with system info, Docker status, and drive info display.
+#
+# Usage:
+#   Run the script directly: `bash presto_bashwelcome.sh`
+#   - No command-line arguments are required or supported.
+#   - Customize display options (e.g., show_docker_info, show_drive_info) by editing
+#     `$HOME/presto-tools/scripts/presto_config.local`. ( just cp presto_config.defaults to presto_config.local and edit 
+#        this one the scipr will overide wiht your .local version)
+#   - Logs can be viewed with: `journalctl -t presto_bashwelcome`.
+#   - Ensure dependencies (curl, docker, lsblk, df, free) are installed for full functionality.
+# -----------------------------------------------
 
-presto_VERSION='1.0.2'
+presto_VERSION='1.0.3'
 VERBOSE_MODE=0  # Default to prevent integer expression error
 
 # Check if running in an interactive shell
