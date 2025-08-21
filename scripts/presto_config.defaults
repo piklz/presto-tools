@@ -1,4 +1,4 @@
-# Default configuration settings for presto_bashwelcome.sh
+# PRESTO CONFIGS Default configuration settings for presto scripts
 # 0 = disabled, 1 = enabled
 
 # Show Docker container information
@@ -12,7 +12,6 @@ show_drive_info=0
 
 VERBOSE_MODE=0
 log_level="INFO"
-LOG_RETENTION_DAYS=30
 CHECK_DISK_SPACE=1
 WEATHER_LOCATION="London"
 

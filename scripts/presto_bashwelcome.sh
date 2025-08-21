@@ -39,15 +39,6 @@ else
     USER="$(id -un)"
 fi
 
-# Set log file path and ensure permissions
-LOG_DIR="$USER_HOME/.local/state/presto"
-LOG_FILE="$LOG_DIR/presto_bashwelcome.log"
-mkdir -p "$LOG_DIR" || { echo "Error: Could not create log directory $LOG_DIR" >&2; exit 1; }
-touch "$LOG_FILE" || { echo "Error: Could not create log file $LOG_FILE" >&2; exit 1; }
-chown "$USER:$USER" "$LOG_DIR" "$LOG_FILE" 2>/dev/null || true
-chmod 755 "$LOG_DIR" 2>/dev/null || true
-chmod 644 "$LOG_FILE" 2>/dev/null || true
-
 # Color variables
 no_col="\e[0m"
 white="\e[37m"
@@ -68,55 +59,50 @@ CROSS="[${lgt_red}✗${no_col}]"
 INFO="[i]"
 DONE="${lgt_green} done!${no_col}"
 
-# Logging function (write to file only, no terminal output unless error matches original)
+# Logging function using systemd-cat
 log_message() {
     local log_level="$1"
     local console_message="$2"
     local log_file_message="${3:-$console_message}"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    if [ -w "$LOG_FILE" ]; then
-        printf "[%s] [presto_bashwelcome] %s %s\n" "$timestamp" "$log_level" "$log_file_message" >> "$LOG_FILE"
-    fi
-    # Only display errors that match original script's behavior
-    if [ "$log_level" = "ERROR" ] && [[ "$console_message" =~ "not found" || "$console_message" =~ "unavailable" ]]; then
-        echo -e "  ${yellow}${console_message}${no_col}"
-    fi
-}
+    local journal_message="[$timestamp] [presto_bashwelcome] [$log_level] $log_file_message"
+    local priority
 
-# Rotate logs based on LOG_RETENTION_DAYS
-rotate_logs() {
-    if [ ! -f "$LOG_FILE" ]; then
-        log_message "WARNING" "Log file $LOG_FILE does not exist, skipping rotation"
-        return 0
+    # Map log levels to systemd priorities
+    case "$log_level" in
+        "ERROR") priority="err" ;;
+        "WARNING") priority="warning" ;;
+        "INFO") priority="info" ;;
+        "DEBUG") [ "$VERBOSE_MODE" -eq 0 ] && return; priority="debug" ;;
+        *) priority="info" ;;
+    esac
+
+    # Log to journald
+    if is_command systemd-cat; then
+        systemd-cat -t presto_bashwelcome -p "$priority" <<< "$journal_message" 2>/dev/null || {
+            [ "$log_level" = "ERROR" ] && echo -e "${yellow}[presto_bashwelcome] [ERROR] Failed to log to journald: $console_message${no_col}" >&2
+        }
+    else
+        [ "$log_level" = "ERROR" ] && echo -e "${yellow}[presto_bashwelcome] [ERROR] systemd-cat not available: $console_message${no_col}" >&2
     fi
-    if [ -z "$LOG_RETENTION_DAYS" ] || ! [[ "$LOG_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$LOG_RETENTION_DAYS" -le 0 ]; then
-        log_message "WARNING" "LOG_RETENTION_DAYS is invalid ($LOG_RETENTION_DAYS), defaulting to 30"
-        LOG_RETENTION_DAYS=30
-    fi
-    log_message "INFO" "Rotating logs older than $LOG_RETENTION_DAYS days in $LOG_FILE"
-    local temp_file="$LOG_DIR/presto_bashwelcome_temp.log"
-    touch "$temp_file" || { log_message "ERROR" "Failed to create temporary log file $temp_file"; return 1; }
-    chown "$USER:$USER" "$temp_file" 2>/dev/null || true
-    chmod 644 "$temp_file" 2>/dev/null || true
-    local cutoff_date=$(date -d "$LOG_RETENTION_DAYS days ago" '+%Y-%m-%d' 2>/dev/null)
-    if [ -z "$cutoff_date" ]; then
-        log_message "ERROR" "Failed to calculate cutoff date for log rotation"
-        rm -f "$temp_file" 2>/dev/null
-        return 1
-    fi
-    while IFS= read -r line; do
-        log_date=$(echo "$line" | grep -oP '^\[\K[0-9]{4}-[0-9]{2}-[0-9]{2}')
-        if [ -z "$log_date" ]; then
-            echo "$line" >> "$temp_file"
-        elif [ "$log_date" \> "$cutoff_date" ] || [ "$log_date" = "$cutoff_date" ]; then
-            echo "$line" >> "$temp_file"
+
+    # Display to console only for interactive shells and specific conditions
+    if [ -t 0 ]; then
+        local color
+        case "$log_level" in
+            "ERROR") color="$red" ;;
+            "WARNING") color="$yellow" ;;
+            "INFO") color="$cyan" ;;
+            "DEBUG") color="$grey" ;;
+            *) color="$no_col" ;;
+        esac
+        # Only display errors matching original behavior
+        if [ "$log_level" = "ERROR" ] && [[ "$console_message" =~ "not found" || "$console_message" =~ "unavailable" ]]; then
+            echo -e "${color}[presto_bashwelcome] [$log_level] $console_message${no_col}"
+        elif [ "$log_level" = "DEBUG" ] && [ "$VERBOSE_MODE" -eq 1 ]; then
+            echo -e "${color}[presto_bashwelcome] [$log_level] $console_message${no_col}"
         fi
-    done < "$LOG_FILE"
-    mv -f "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; rm -f "$temp_file" 2>/dev/null; return 1; }
-    chown "$USER:$USER" "$LOG_FILE" 2>/dev/null || true
-    chmod 644 "$LOG_FILE" 2>/dev/null || true
-    log_message "INFO" "Log rotation completed"
-    return 0
+    fi
 }
 
 # Check disk space before critical operations
@@ -144,7 +130,7 @@ check_disk_space() {
 DEFAULT_CONFIG="$USER_HOME/presto-tools/scripts/presto_config.defaults"
 if [ ! -f "$DEFAULT_CONFIG" ]; then
     log_message "INFO" "Creating default configuration file $DEFAULT_CONFIG"
-    mkdir -p "$USER_HOME/presto-tools/scripts" || { log_message "ERROR" "Failed to create directory for $DEFAULT_CONFIG"; echo "Error: Could not create directory for $DEFAULT_CONFIG" >&2; exit 1; }
+    mkdir -p "$USER_HOME/presto-tools/scripts" || { log_message "ERROR" "Failed to create directory for $DEFAULT_CONFIG" "Failed to create directory for $DEFAULT_CONFIG"; echo "Error: Could not create directory for $DEFAULT_CONFIG" >&2; exit 1; }
     cat << EOF > "$DEFAULT_CONFIG"
 # Presto default configuration
 show_docker_info=1
@@ -152,7 +138,6 @@ show_smartdrive_info=0
 show_drive_info=1
 VERBOSE_MODE=0
 log_level="INFO"
-LOG_RETENTION_DAYS=30
 CHECK_DISK_SPACE=1
 WEATHER_LOCATION="London"
 SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"
@@ -178,9 +163,6 @@ if ! [[ "$VERBOSE_MODE" =~ ^[0-9]+$ ]]; then
     log_message "WARNING" "VERBOSE_MODE is invalid ($VERBOSE_MODE), defaulting to 0"
     VERBOSE_MODE=0
 fi
-
-# Rotate logs at startup
-rotate_logs || { log_message "ERROR" "Log rotation failed, continuing execution"; }
 
 # TV color bar graphic
 for y in $(seq 0 10); do
@@ -473,7 +455,6 @@ else
     echo -e "\n  ${grey_dim}Drive blkid information display skipped by user preference.${no_col}"
 fi
 
-
 #START OF FINAL INFO BLOCK EMOJI -----------------------------
 
 # Extract the first part of the date (up to the time)
@@ -482,17 +463,14 @@ date_part=$(echo "$date_full" | cut -d' ' -f1-4 | sed 's/,$//')
 # Extract the second part (timezone)
 timezone_part=$(echo "$date_full" | cut -d' ' -f5-)
 
-
 #start of date + OS SYS  block emoji block  
 printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n" "Operating System:" "${os}"
-
 
 # Print the first line with the date and time
 printf " %-3s ${white}%-13s${no_col}  %s\n" " ${calendar}" "Date:" "${date_part}"
 
 # Print the second line with the timezone, indented
 printf "%s%s\n" "$(printf '%*s' 22)" "${timezone_part}"
-
 
 #echo -e "\n"
 
