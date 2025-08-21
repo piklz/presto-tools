@@ -325,13 +325,13 @@ print_docker_status() {
         log_message "INFO" "Newer Docker Compose version available: v$LATEST_COMPOSE_VERSION"
         echo -e "${yellow}  ✅ A newer version of Docker Compose is available (v$LATEST_COMPOSE_VERSION).${no_col}"
         UPDATE_NEEDED=1
-        echo -e "\n"
+        #echo -e "\n"
     fi
     if [[ "$DOCKER_UPDATE" == "newer" ]]; then
         log_message "INFO" "Newer Docker Engine version available: v$LATEST_DOCKER_VERSION"
         echo -e "${yellow}  ✅ A newer version of Docker Engine is available (v$LATEST_DOCKER_VERSION).${no_col}"
         UPDATE_NEEDED=1
-        echo -e "\n"
+        #echo -e "\n"
     fi
     if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
         log_message "INFO" "Docker and Docker Compose are up to date"
