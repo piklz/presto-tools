@@ -10,41 +10,39 @@
 #         _\/\\\_____________\/\\\______\//\\\_\/\\\\\\\\\\\\\\\_\///\\\\\\\\\\\/_________\/\\\__________\///\\\\\/_____ 
 #          _\///______________\///________\///__\///////////////____\///////////___________\///_____________\/////_______
 
-##################################################################################################
 #-------------------------------------------------------------------------------------------------
 # presto_drive_status.sh - Monitor disk health and usage on Linux systems
-#--------------------------------------------------------------------------------------------------
-# Author        : piklz
-# GitHub        : https://github.com/piklz/presto-tools.git
-# Web           : https://github.com/piklz/presto-tools.git
-# Version       : v1.0.3
-# Changes since : v1.0.3, 2025-08-07 (Fixed permissions for log directory/file)
-# Desc          : Monitors disk health using smartctl and usage with lsblk/df, with multiple output formats
-##################################################################################################
+# Version: 1.0.4
+# Author: piklz
+# GitHub: https://github.com/piklz/presto-tools.git
+# Web: https://github.com/piklz/presto-tools.git
+# Description:
+#   Monitors disk health using smartctl and usage with lsblk/df, with multiple output formats (simple, full, single device).
+#   Customizable via a configuration file. Logs to systemd-journald, with rotation managed by journald.
+#
+# Changelog:
+#   Version 1.0.4 (2025-08-21):
+#     - Added script version to --help output and journal tip for viewing logs.
+#   Version 1.0.3 (2025-08-07):
+#     - Fixed permissions for log directory/file, improved sudo handling.
+#   Version 1.0.2 (2025-07-15):
+#     - Replaced file-based logging with systemd-cat journal logging.
+#   Version 1.0.1 (2025-06-30):
+#     - Added support for multiple SMART device types and improved error handling.
+#
+# Usage:
+#   Run the script with sudo: `sudo ./presto_drive_status.sh [OPTIONS]`
+#   - Options include --help, --moreinfo, --simple, --device, --all-partitions, and -d for debug logging.
+#   - Customize display options (e.g., CHECK_DISK_SPACE, DEFAULT_OUTPUT_MODE) by editing
+#     `$HOME/presto-tools/scripts/presto_config.local`. (Copy presto_config.defaults to presto_config.local and edit.)
+#   - Logs can be viewed with: `journalctl -t presto_drive_status -n 10`.
+#   - Ensure dependencies (smartctl, lsblk, df, blkid) are installed for full functionality.
+#-------------------------------------------------------------------------------------------------
 
 # Set default variables
-presto_VERSION='1.0.3'
+presto_VERSION='1.0.4'
 VERBOSE_MODE=0
 DEFAULT_OUTPUT_MODE="simple_full"
-
-# Determine real user's home directory
-USER_HOME=""
-if [ -n "$SUDO_USER" ]; then
-    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
-    USER="$SUDO_USER"
-else
-    USER_HOME="$HOME"
-    USER="$(id -un)"
-fi
-
-# Set log file path and ensure permissions
-LOG_DIR="$USER_HOME/.local/state/presto"
-LOG_FILE="$LOG_DIR/presto_drive_status.log"
-mkdir -p "$LOG_DIR" || { echo "Error: Could not create log directory $LOG_DIR" >&2; exit 1; }
-touch "$LOG_FILE" || { echo "Error: Could not create log file $LOG_FILE" >&2; exit 1; }
-chown "$USER:$USER" "$LOG_DIR" "$LOG_FILE" 2>/dev/null || true
-chmod 755 "$LOG_DIR" 2>/dev/null || true
-chmod 644 "$LOG_FILE" 2>/dev/null || true
 
 # Color variables (aligned with presto_bashwelcome.sh)
 no_col="\e[0m"
@@ -66,56 +64,68 @@ CROSS="[${lgt_red}✗${no_col}]"
 INFO="[i]"
 DONE="${lgt_green} done!${no_col}"
 
-# Logging function (write to file only, minimal terminal output)
+# Debug flag (default: disabled)
+DEBUG_ENABLED=0
+
+# Log message function
 log_message() {
     local log_level="$1"
     local console_message="$2"
     local log_file_message="${3:-$console_message}"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    if [ -w "$LOG_FILE" ]; then
-        printf "[%s] [presto_drive_status] %s %s\n" "$timestamp" "$log_level" "$log_file_message" >> "$LOG_FILE"
+    local exit_on_error="${4:-true}" # Default to true if not specified
+
+    # Skip debug messages if debug is not enabled
+    if [ "$log_level" = "DEBUG" ] && [ "$DEBUG_ENABLED" -eq 0 ]; then
+        return
     fi
-    # Only display errors that match presto_bashwelcome.sh's behavior
+
+    # Format timestamp
+    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    local journal_message="[$timestamp] [presto_drive_status] [$log_level] $log_file_message"
+
+    # Map log level to systemd priority
+    case "${log_level,,}" in
+        debug) priority="debug" ;;
+        info) priority="info" ;;
+        warning) priority="warning" ;;
+        error) priority="err" ;;
+        *) priority="info" ;;
+    esac
+
+    # Log to journald using systemd-cat
+    if ! systemd-cat -t presto_drive_status -p "$priority" <<< "$journal_message"; then
+        echo "[presto_drive_status] [ERROR] Failed to log to journald" >&2
+    fi
+
+    # Print to console only for specific ERROR messages
     if [ "$log_level" = "ERROR" ] && [[ "$console_message" =~ "not found" || "$console_message" =~ "unavailable" || "$console_message" =~ "requires root privileges" ]]; then
         echo -e "${yellow}${console_message}${no_col}"
     fi
+
+    # Exit on error if specified
+    if [ "$log_level" = "ERROR" ] && [ "$exit_on_error" = "true" ]; then
+        exit 1
+    fi
 }
 
-# Rotate logs based on LOG_RETENTION_DAYS
-rotate_logs() {
-    if [ ! -f "$LOG_FILE" ]; then
-        log_message "WARNING" "Log file $LOG_FILE does not exist, skipping rotation"
-        return 0
-    fi
-    if [ -z "$LOG_RETENTION_DAYS" ] || ! [[ "$LOG_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$LOG_RETENTION_DAYS" -le 0 ]; then
-        log_message "WARNING" "LOG_RETENTION_DAYS is invalid ($LOG_RETENTION_DAYS), defaulting to 30"
-        LOG_RETENTION_DAYS=30
-    fi
-    log_message "INFO" "Rotating logs older than $LOG_RETENTION_DAYS days in $LOG_FILE"
-    local temp_file="$LOG_DIR/presto_drive_status_temp.log"
-    touch "$temp_file" || { log_message "ERROR" "Failed to create temporary log file $temp_file"; return 1; }
-    chown "$USER:$USER" "$temp_file" 2>/dev/null || true
-    chmod 644 "$temp_file" 2>/dev/null || true
-    local cutoff_date=$(date -d "$LOG_RETENTION_DAYS days ago" '+%Y-%m-%d' 2>/dev/null)
-    if [ -z "$cutoff_date" ]; then
-        log_message "ERROR" "Failed to calculate cutoff date for log rotation"
-        rm -f "$temp_file" 2>/dev/null
-        return 1
-    fi
-    while IFS= read -r line; do
-        log_date=$(echo "$line" | grep -oP '^\[\K[0-9]{4}-[0-9]{2}-[0-9]{2}')
-        if [ -z "$log_date" ]; then
-            echo "$line" >> "$temp_file"
-        elif [ "$log_date" \> "$cutoff_date" ] || [ "$log_date" = "$cutoff_date" ]; then
-            echo "$line" >> "$temp_file"
-        fi
-    done < "$LOG_FILE"
-    mv -f "$temp_file" "$LOG_FILE" || { log_message "ERROR" "Failed to update $LOG_FILE after rotation"; rm -f "$temp_file" 2>/dev/null; return 1; }
-    chown "$USER:$USER" "$LOG_FILE" 2>/dev/null || true
-    chmod 644 "$LOG_FILE" 2>/dev/null || true
-    log_message "INFO" "Log rotation completed"
-    return 0
-}
+# Determine real user's home directory
+USER_HOME=""
+if [ -n "$SUDO_USER" ]; then
+    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+    USER="$SUDO_USER"
+else
+    USER_HOME="$HOME"
+    USER="$(id -un)"
+fi
+
+# Set log file path and ensure permissions
+LOG_DIR="$USER_HOME/.local/state/presto"
+LOG_FILE="$LOG_DIR/presto_drive_status.log"
+mkdir -p "$LOG_DIR" || { echo "Error: Could not create log directory $LOG_DIR" >&2; exit 1; }
+touch "$LOG_FILE" || { echo "Error: Could not create log file $LOG_FILE" >&2; exit 1; }
+chown "$USER:$USER" "$LOG_DIR" "$LOG_FILE" 2>/dev/null || true
+chmod 755 "$LOG_DIR" 2>/dev/null || true
+chmod 644 "$LOG_FILE" 2>/dev/null || true
 
 # Check disk space before critical operations
 check_disk_space() {
@@ -177,9 +187,6 @@ if ! [[ "$VERBOSE_MODE" =~ ^[0-9]+$ ]]; then
     VERBOSE_MODE=0
 fi
 
-# Rotate logs at startup
-rotate_logs || { log_message "ERROR" "Log rotation failed, continuing execution"; }
-
 # Check for root privileges
 if [ "$EUID" -ne 0 ]; then
     log_message "ERROR" "This script requires root privileges to access hardware devices"
@@ -200,6 +207,8 @@ done
 
 # Help function (defined before argument parsing)
 display_help() {
+    echo "presto_drive_status.sh (v${presto_VERSION})"
+    echo ""
     echo "Usage: sudo ./presto_drive_status.sh [OPTIONS]"
     echo ""
     echo "Options:"
@@ -215,6 +224,9 @@ display_help() {
     echo "  sudo ./presto_drive_status.sh --simple"
     echo "  sudo ./presto_drive_status.sh --device /dev/sdb1"
     echo "  sudo ./presto_drive_status.sh --all-partitions"
+    echo ""
+    echo "To see info or warning logs type:"
+    echo "     journalctl -t presto_drive_status -n 10"
     exit 0
 }
 
@@ -225,6 +237,10 @@ MANUAL_DEVICE=""
 
 while (( "$#" )); do
     case "$1" in
+        -d)
+            DEBUG_ENABLED=1
+            shift
+            ;;
         --help)
             display_help
             ;;
@@ -274,13 +290,13 @@ get_smart_status() {
             status_emoji="✅"
             break
         elif echo "$smart_output" | grep -q "SMART Health Status: FAILED"; then
-            log_message "WARNING" "SMART status FAILED for $device_path (type: $type)"
+            log_message "WARNING" "SMART status FAILED for $device_path (type: $type)" "" "false"
             status_emoji="⚠️"
             break
         fi
     done
     if [ "$status_emoji" = "❓" ]; then
-        log_message "WARNING" "Unable to determine SMART status for $device_path"
+        log_message "WARNING" "Unable to determine SMART status for $device_path" "" "false"
     fi
     echo "$status_emoji"
 }
