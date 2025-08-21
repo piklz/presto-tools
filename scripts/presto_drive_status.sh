@@ -12,7 +12,7 @@
 
 #-------------------------------------------------------------------------------------------------
 # presto_drive_status.sh - Monitor disk health and usage on Linux systems
-# Version: 1.0.4
+# Version: 1.0.5
 # Author: piklz
 # GitHub: https://github.com/piklz/presto-tools.git
 # Web: https://github.com/piklz/presto-tools.git
@@ -21,14 +21,14 @@
 #   Customizable via a configuration file. Logs to systemd-journald, with rotation managed by journald.
 #
 # Changelog:
+#   Version 1.0.5 (2025-08-21):
+#     - Removed unused file-based logging variables (LOG_DIR, LOG_FILE), directory/file creation code, and LOG_RETENTION_DAYS from configuration.
 #   Version 1.0.4 (2025-08-21):
 #     - Added script version to --help output and journal tip for viewing logs.
 #   Version 1.0.3 (2025-08-07):
 #     - Fixed permissions for log directory/file, improved sudo handling.
 #   Version 1.0.2 (2025-07-15):
 #     - Replaced file-based logging with systemd-cat journal logging.
-#   Version 1.0.1 (2025-06-30):
-#     - Added support for multiple SMART device types and improved error handling.
 #
 # Usage:
 #   Run the script with sudo: `sudo ./presto_drive_status.sh [OPTIONS]`
@@ -40,7 +40,7 @@
 #-------------------------------------------------------------------------------------------------
 
 # Set default variables
-presto_VERSION='1.0.4'
+presto_VERSION='1.0.5'
 VERBOSE_MODE=0
 DEFAULT_OUTPUT_MODE="simple_full"
 
@@ -118,15 +118,6 @@ else
     USER="$(id -un)"
 fi
 
-# Set log file path and ensure permissions
-LOG_DIR="$USER_HOME/.local/state/presto"
-LOG_FILE="$LOG_DIR/presto_drive_status.log"
-mkdir -p "$LOG_DIR" || { echo "Error: Could not create log directory $LOG_DIR" >&2; exit 1; }
-touch "$LOG_FILE" || { echo "Error: Could not create log file $LOG_FILE" >&2; exit 1; }
-chown "$USER:$USER" "$LOG_DIR" "$LOG_FILE" 2>/dev/null || true
-chmod 755 "$LOG_DIR" 2>/dev/null || true
-chmod 644 "$LOG_FILE" 2>/dev/null || true
-
 # Check disk space before critical operations
 check_disk_space() {
     local required_space_mb=100
@@ -160,7 +151,6 @@ show_smartdrive_info=0
 show_drive_info=1
 VERBOSE_MODE=0
 log_level="INFO"
-LOG_RETENTION_DAYS=30
 CHECK_DISK_SPACE=1
 WEATHER_LOCATION="London"
 SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"

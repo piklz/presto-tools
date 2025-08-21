@@ -10,17 +10,34 @@
 #         _\/\\\_____________\/\\\______\//\\\_\/\\\\\\\\\\\\\\\_\///\\\\\\\\\\\/_________\/\\\__________\///\\\\\/_____ 
 #          _\///______________\///________\///__\///////////////____\///////////___________\///_____________\/////_______
 
-##################################################################################################
 #-------------------------------------------------------------------------------------------------
 # presto_update_full.py - Automatically update Docker containers and prune images
-#--------------------------------------------------------------------------------------------------
-# Author        : piklz
-# GitHub        : https://github.com/piklz/presto-tools
-# Web           : https://github.com/piklz/presto-tools
-# Version       : v1.0.6
-# Changes since : v1.0.6, 2025-08-08 (Added detailed change reporting for Docker Compose updates)
-# Desc          : Checks for Docker Compose changes, updates containers using a task sequence, and prunes images
-##################################################################################################
+# Version: 1.0.8
+# Author: piklz
+# GitHub: https://github.com/piklz/presto-tools
+# Web: https://github.com/piklz/presto-tools
+# Description:
+#   Checks for Docker Compose changes, updates containers using a task sequence, and prunes images.
+#   Customizable via a configuration file. Logs to systemd-journald, with rotation managed by journald.
+#
+# Changelog:
+#   Version 1.0.8 (2025-08-21):
+#     - Removed unused file-based logging variables (LOG_DIR, LOG_FILE) and set_log_file_path function.
+#   Version 1.0.7 (2025-08-21):
+#     - Replaced file-based logging with systemd-cat, added -d flag for debug logging, added version and journal tip to --help.
+#   Version 1.0.6 (2025-08-08):
+#     - Added detailed change reporting for Docker Compose updates.
+#   Version 1.0.5 (2025-07-15):
+#     - Improved error handling for Docker Compose configuration checks.
+#
+# Usage:
+#   Run the script with sudo: `sudo python3 presto_update_full.py [OPTIONS]`
+#   - Options include --help, --interactive, and -d for debug logging.
+#   - Customize settings by editing `$HOME/presto-tools/scripts/presto_config.local`.
+#     (Copy presto_config.defaults to presto_config.local and edit.)
+#   - Logs can be viewed with: `journalctl -t presto_update_full -n 10`.
+#   - Ensure dependencies (docker, docker compose) are installed for full functionality.
+#-------------------------------------------------------------------------------------------------
 
 import os
 import subprocess
@@ -40,9 +57,8 @@ COLOR_RESET = "\033[0m"
 USER_HOME = os.path.expanduser("~")
 INSTALL_DIR = os.path.join(USER_HOME, "presto-tools")
 PRESTO_DIR = os.path.join(USER_HOME, "presto")
-LOG_DIR = os.path.join(USER_HOME, ".local/state/presto")
-LOG_FILE = None
 DOCKER_COMPOSE_FILE = os.path.join(PRESTO_DIR, "docker-compose.yml")
+DEBUG_ENABLED = False
 
 # Task list for container operations
 TASKS = [
@@ -53,36 +69,42 @@ TASKS = [
     {"command": "docker image prune -a -f", "message": "Pruning unused images... 🗑️"}
 ]
 
-def set_log_file_path():
-    """Determine the correct log file path based on permissions."""
-    global LOG_FILE
-    if os.geteuid() == 0:
-        LOG_FILE = "/var/log/presto_update_full.log"
-    else:
-        LOG_FILE = os.path.join(LOG_DIR, "presto_update_full.log")
-        os.makedirs(LOG_DIR, exist_ok=True)
-        if not os.access(LOG_DIR, os.W_OK):
-            print(f"{COLOR_RED}Error: Cannot write to log directory '{LOG_DIR}'.{COLOR_RESET}", file=sys.stderr)
-            sys.exit(1)
-    
-    try:
-        Path(LOG_FILE).touch()
-        if not os.access(LOG_FILE, os.W_OK):
-            print(f"{COLOR_RED}Error: Cannot write to log file '{LOG_FILE}'.{COLOR_RESET}", file=sys.stderr)
-            sys.exit(1)
-    except Exception as e:
-        print(f"{COLOR_RED}Error: Could not create or write to log file '{LOG_FILE}': {e}{COLOR_RESET}", file=sys.stderr)
-        sys.exit(1)
+def log_message(message, level="INFO", console_message=None, exit_on_error=True):
+    """Log a message to systemd-journald with a timestamp."""
+    if level == "DEBUG" and not DEBUG_ENABLED:
+        return
 
-def log_message(message, level="INFO"):
-    """Log a message to the log file with a timestamp."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"[{timestamp}] {level}: {message}"
+    journal_message = f"[{timestamp}] [presto_update_full] [{level}] {message}"
+
+    # Map log level to systemd priority
+    priority_map = {
+        "DEBUG": "debug",
+        "INFO": "info",
+        "WARNING": "warning",
+        "ERROR": "err"
+    }
+    priority = priority_map.get(level.upper(), "info")
+
+    # Log to journald using systemd-cat
     try:
-        with open(LOG_FILE, "a") as f:
-            f.write(log_entry + "\n")
-    except Exception as e:
-        print(f"{COLOR_RED}Error: Failed to write to log file '{LOG_FILE}': {e}{COLOR_RESET}", file=sys.stderr)
+        subprocess.run(
+            ["systemd-cat", "-t", "presto_update_full", "-p", priority],
+            input=journal_message,
+            text=True,
+            check=True
+        )
+    except subprocess.SubprocessError as e:
+        print(f"{COLOR_RED}[presto_update_full] [ERROR] Failed to log to journald: {e}{COLOR_RESET}", file=sys.stderr)
+
+    # Print to console only for specific ERROR messages
+    console_message = console_message or message
+    if level == "ERROR" and any(p in console_message.lower() for p in ["not found", "unavailable", "requires root privileges"]):
+        print(f"{COLOR_YELLOW}{console_message}{COLOR_RESET}", file=sys.stderr)
+
+    # Exit on error if specified
+    if level == "ERROR" and exit_on_error:
+        sys.exit(1)
 
 def run_command(command, check=True, stream_output=False):
     """Run a shell command, optionally streaming output to terminal."""
@@ -225,13 +247,18 @@ def run_container_tasks(interactive=False):
 
 def main():
     """Main function to check and update Docker containers."""
-    parser = argparse.ArgumentParser(description="Update Docker containers and prune images")
+    parser = argparse.ArgumentParser(
+        description=f"presto_update_full.py (v1.0.8)\n\nUpdate Docker containers and prune images",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="To see info or warning logs type:\n     journalctl -t presto_update_full -n 10"
+    )
     parser.add_argument("--interactive", action="store_true", help="Run image pruning interactively")
+    parser.add_argument("-d", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 
-    # Set up logging
-    set_log_file_path()
-    log_message("Starting presto_update_full.py")
+    # Set debug flag
+    global DEBUG_ENABLED
+    DEBUG_ENABLED = args.d
 
     # Check if Docker is available
     if not shutil.which("docker"):
