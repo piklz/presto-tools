@@ -79,6 +79,13 @@ CROSS="[${lgt_red}✗${no_col}]"
 INFO="[i]"
 DONE="${lgt_green} done!${no_col}"
 
+
+# Check if a command exists
+is_command() {
+    local check_command="$1"
+    command -v "${check_command}" >/dev/null 2>&1
+}
+
 # Logging function using systemd-cat
 log_message() {
     local log_level="$1"
@@ -231,11 +238,7 @@ icon_graphics=(
     "$laptop" "$gpu" "$house" "$globe" "$calendar" "$os" "$filesystem" "$clock" "$ram" "$weather" "$timer" "$fan"
 )
 
-# Check if a command exists
-is_command() {
-    local check_command="$1"
-    command -v "${check_command}" >/dev/null 2>&1
-}
+
 
 # Fetch weather
 log_message "INFO" "Fetching weather for ${WEATHER_LOCATION}"
