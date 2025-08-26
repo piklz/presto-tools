@@ -91,7 +91,7 @@ RESET=$(tput sgr0)
 
 # Function to display help information
 show_help() {
-    echo "presto_usb_install.sh - Version 1.9"
+    echo "presto_usb_install.sh (v${VERSION})"
     echo "Automates mounting of external USB drives for Plex media servers."
     echo ""
     echo "Usage: sudo ./presto_usb_install.sh [OPTIONS]"
