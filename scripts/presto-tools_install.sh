@@ -112,7 +112,9 @@ log_message() {
 # --- Help message function
 print_help() {
     printf "
-Usage: sudo ./presto-tools_install.sh (v${VERSION}) [OPTIONS]
+presto_usb_install.sh (v${VERSION})
+""
+Usage: sudo ./presto-tools_install.sh [OPTIONS]
 
 This script installs and configures presto-tools on your system.
 
