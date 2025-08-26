@@ -112,7 +112,7 @@ log_message() {
 # --- Help message function
 print_help() {
     printf "
-presto_usb_install.sh (v${VERSION})
+presto-tool_install.sh (v${VERSION})
 ""
 Usage: sudo ./presto-tools_install.sh [OPTIONS]
 
@@ -129,6 +129,9 @@ The script performs the following actions:
 4.  Adds a check for a ~/.bash_aliases file to your ~/.bashrc.
 5.  Installs bash completion for presto_drive_status.sh.
 
+"To view journal logs for this script, use:"
+"  journalctl -t presto-tools_install -n 10"
+""
 "
 }
 
