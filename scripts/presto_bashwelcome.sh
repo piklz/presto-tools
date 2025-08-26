@@ -13,7 +13,7 @@
 ##################################################################################################
 #-------------------------------------------------------------------------------------------------
 # presto-tools Welcome Script
-# Version: 1.0.3
+# Version: 1.0.4
 # Author: piklz
 # GitHub: https://github.com/piklz/presto-tools.git
 # Description:
@@ -22,14 +22,14 @@
 #   managed by journald (compatible with future log2ram integration).
 #
 # Changelog:
+#   Version 1.0.4 (2025-09-10):
+#     - remove errornous colour ansi tag in curl for wttr weather fetch
 #   Version 1.0.3 (2025-08-21):
 #     - Fixed is_command not found error by moving function definition before log_message.
 #   Version 1.0.2 (2025-08-07):
 #     - Fixed permissions for log directory/file, improved sudo handling.
 #   Version 1.0.1 (2025-07-15):
 #     - Added weather fetching with wttr.in, improved error handling for network issues.
-#   Version 1.0.0 (2025-06-30):
-#     - Initial release with system info, Docker status, and drive info display.
 #
 # Usage:
 #   Run the script directly: `bash presto_bashwelcome.sh`
@@ -41,7 +41,7 @@
 #   - Ensure dependencies (curl, docker, lsblk, df, free) are installed for full functionality.
 # -----------------------------------------------
 
-presto_VERSION='1.0.3'
+script_VERSION='1.0.4'
 VERBOSE_MODE=0  # Default to prevent integer expression error
 
 # Check if running in an interactive shell
@@ -242,7 +242,7 @@ icon_graphics=(
 
 # Fetch weather
 log_message "INFO" "Fetching weather for ${WEATHER_LOCATION}"
-weather_info=$(timeout 4 curl -s "https://wttr.in/${lgt_green_inv}${WEATHER_LOCATION}${no_col}?format=%l:+%c+%C+%t+feels-like+%f+\n+++++++++++++++++++phase%m++humid+%h+🌞+%S+🌇+%s+\n" 2>/dev/null || echo "..might be sunny somewhere?")
+weather_info=$(timeout 4 curl -s "https://wttr.in/${WEATHER_LOCATION}?format=%l:+%c+%C+%t+feels-like+%f+\n+++++++++++++++++++phase%m++humid+%h+🌞+%S+🌇+%s+\n" 2>/dev/null || echo "..might be sunny somewhere?")
 if [[ "$weather_info" == "..might be sunny somewhere?" ]]; then
     log_message "WARNING" "Weather service [wttr.in] unavailable or timed out"
     echo -e "  ${grey_dim}The weather [wttr.in] is downright now .. continue${no_col}\n"
