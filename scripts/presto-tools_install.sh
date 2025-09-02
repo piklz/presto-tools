@@ -41,7 +41,7 @@
 #########################################################################################################################
 
 # --- Configuration and variables
-VERSION='2.1'
+VERSION='2.2'
 JOURNAL_TAG="presto-tools_install"
 set -e
 
