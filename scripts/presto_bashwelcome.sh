@@ -13,7 +13,7 @@
 ##################################################################################################
 #-------------------------------------------------------------------------------------------------
 # presto-tools Welcome Script
-# Version: 1.0.4
+# Version: 1.0.7
 # Author: piklz
 # GitHub: https://github.com/piklz/presto-tools.git
 # Description:
@@ -22,32 +22,71 @@
 #   managed by journald (compatible with future log2ram integration).
 #
 # Changelog:
+#   Version 1.0.7 (2025-09-02):
+#     - Added 'pixel' logo style and --help option
+#   Version 1.0.6 (2025-09-02):
+#     - Fixed syntax error in SUDO_USER check and removed erroneous System: line
+#   Version 1.0.5 (2025-09-02):
+#     - Added -logo argument to select logo style (colorbars, simple, ascii)
 #   Version 1.0.4 (2025-09-10):
-#     - remove errornous colour ansi tag in curl for wttr weather fetch
-#   Version 1.0.3 (2025-08-21):
-#     - Fixed is_command not found error by moving function definition before log_message.
-#   Version 1.0.2 (2025-08-07):
-#     - Fixed permissions for log directory/file, improved sudo handling.
-#   Version 1.0.1 (2025-07-15):
-#     - Added weather fetching with wttr.in, improved error handling for network issues.
+#     - Remove erroneous colour ANSI tag in curl for wttr weather fetch
 #
 # Usage:
-#   Run the script directly: `bash presto_bashwelcome.sh`
-#   - No command-line arguments are required or supported.
+#   Run the script directly: `bash presto_bashwelcome.sh [-logo {colorbars|simple|ascii|pixel}] [--help]`
+#   - The -logo argument selects the logo style (default: colorbars).
+#   - The --help argument displays this help message.
 #   - Customize display options (e.g., show_docker_info, show_drive_info) by editing
-#     `$HOME/presto-tools/scripts/presto_config.local`. ( just cp presto_config.defaults to presto_config.local and edit 
-#        this one the scipr will overide wiht your .local version)
+#     `$HOME/presto-tools/scripts/presto_config.local`. (just cp presto_config.defaults to presto_config.local and edit 
+#        this one, the script will override with your .local version)
 #   - Logs can be viewed with: `journalctl -t presto_bashwelcome`.
 #   - Ensure dependencies (curl, docker, lsblk, df, free) are installed for full functionality.
 # -----------------------------------------------
 
-script_VERSION='1.0.4'
+script_VERSION='1.0.7'
 VERBOSE_MODE=0  # Default to prevent integer expression error
+LOGO_STYLE="colorbars"  # Default logo style
 
 # Check if running in an interactive shell
 if [[ ! -t 0 ]]; then
     exit 0  # Silently exit in non-interactive shells
 fi
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -logo)
+            if [[ -n "$2" && "$2" =~ ^(colorbars|simple|ascii|pixel)$ ]]; then
+                LOGO_STYLE="$2"
+                shift 2
+            else
+                echo "Error: Invalid logo style. Use: colorbars, simple, ascii, or pixel"
+                exit 1
+            fi
+            ;;
+        --help)
+            echo -e "${cyan}presto-tools Welcome Script${no_col}"
+            echo -e "Version: $script_VERSION"
+            echo -e "Author: piklz"
+            echo -e "GitHub: https://github.com/piklz/presto-tools.git"
+            echo -e "\nDescription:"
+            echo -e "  Displays a colorful system information dashboard for Raspberry Pi, including CPU/GPU temperatures, disk usage,"
+            echo -e "  Docker status, and weather. Customizable via a configuration file. Logs to systemd-journald."
+            echo -e "\nUsage:"
+            echo -e "  $0 [-logo {colorbars|simple|ascii|pixel}] [--help]"
+            echo -e "  -logo: Select logo style (default: colorbars)"
+            echo -e "  --help: Display this help message"
+            echo -e "\nConfiguration:"
+            echo -e "  Customize options in \$HOME/presto-tools/scripts/presto_config.local"
+            echo -e "  View logs with: journalctl -t presto_bashwelcome"
+            exit 0
+            ;;
+        *)
+            echo "Error: Unknown argument: $1"
+            echo "Usage: $0 [-logo {colorbars|simple|ascii|pixel}] [--help]"
+            exit 1
+            ;;
+    esac
+done
 
 # Determine real user's home directory
 USER_HOME=""
@@ -79,6 +118,83 @@ CROSS="[${lgt_red}✗${no_col}]"
 INFO="[i]"
 DONE="${lgt_green} done!${no_col}"
 
+# Additional color definitions for pixel logo
+f=3 b=4
+for j in f b; do
+  for i in {0..7}; do
+    printf -v $j$i %b "\e[${!j}${i}m"
+  done
+done
+for i in {0..7}; do
+    printf -v g$i %b "\e[9${i}m"
+done
+bd=$'\e[1m'
+rt=$'\e[0m'
+iv=$'\e[7m'
+
+# Function to display the logo based on the selected style
+display_logo() {
+    case "$LOGO_STYLE" in
+        colorbars)
+            # TV color bar graphic
+            for y in $(seq 0 10); do
+                printf %s '  '
+                for color in 7 3 6 2 5 1 4 ; do
+                    tput setab ${color}
+                    printf %s '       '
+                done
+                tput sgr0
+                echo
+            done
+            for y in 0 1; do
+                printf %s '  '
+                for color in 4 0 5 0 6 0 7 ; do
+                    tput setab ${color}
+                    printf %s '       '
+                done
+                tput sgr0
+                echo
+            done
+
+            # Presto rainbow road title
+            text="PRESTO"
+            colors=("\e[31m" "\e[33m" "\e[32m" "\e[36m" "\e[34m" "\e[35m")
+            for ((i=0; i<${#text}; i++)); do
+                color_index=$((i % ${#colors[@]}))
+                echo -ne "  ${colors[$color_index]}${text:i:1}"
+            done
+            echo -e "\e[0m"
+            ;;
+        simple)
+            echo -e "${cyan}PRESTO${no_col}"
+            ;;
+        ascii)
+            echo -e "${cyan}╔══════╗${no_col}"
+            echo -e "${cyan}║ PRESTO ║${no_col}"
+            echo -e "${cyan}╚══════╝${no_col}"
+            ;;
+        pixel)
+            cat << EOF
+  ${g3}                       ██████
+  ${f1}           ████████    ${g3}██████
+  ${f1}         ████████████████${g3}████
+  ${g0}         ████${g3}████${g0}██${g3}█  ${g0}███████
+  ${g0}      ██${g3}█${g0}██${g3}██████${g0}██${g3}████${g0}██████
+  ${g0}      ██${g3}██${g0}███${g3}██████${g0}██${g3}████${g0}████
+  ${g0}      ███${g3}████████${g0}████████
+  ${g3}         █████████████${g0}██
+  ${g0}   ████████${f1}██${g0}█████${f1}██${g0}██
+  ${g0} ████████████${f1}██${g0}█████${f1}██      ${g0}██
+  ${g3}████${g0}█████████${f1}█████████      ${g0}██
+  ${g3}█████    ${f1}██${g0}██${f1}███${g3}██${f1}██${g3}██${f1}███${g0}█████
+  ${g3} ██ ${g0}██  ${f1}█████████████████${g0}█████
+  ${g0}  ██████${f1}█████████████████${g0}█████
+  ${g0}█████${f1}█████████████
+  ${g0}██   ${f1}██████${rt}
+EOF
+            ;;
+    esac
+}
 
 # Check if a command exists
 is_command() {
@@ -191,34 +307,8 @@ if ! [[ "$VERBOSE_MODE" =~ ^[0-9]+$ ]]; then
     VERBOSE_MODE=0
 fi
 
-# TV color bar graphic
-for y in $(seq 0 10); do
-    printf %s '  '
-    for color in 7 3 6 2 5 1 4 ; do
-        tput setab ${color}
-        printf %s '       '
-    done
-    tput sgr0
-    echo
-done
-for y in 0 1; do
-    printf %s '  '
-    for color in 4 0 5 0 6 0 7 ; do
-        tput setab ${color}
-        printf %s '       '
-    done
-    tput sgr0
-    echo
-done
-
-# Presto rainbow road title
-text="PRESTO"
-colors=("\e[31m" "\e[33m" "\e[32m" "\e[36m" "\e[34m" "\e[35m")
-for ((i=0; i<${#text}; i++)); do
-    color_index=$((i % ${#colors[@]}))
-    echo -ne "  ${colors[$color_index]}${text:i:1}"
-done
-echo -e "\e[0m"
+# Display the selected logo
+display_logo
 
 # Icon graphics
 laptop="💻"
@@ -237,8 +327,6 @@ fan="🔄"
 icon_graphics=(
     "$laptop" "$gpu" "$house" "$globe" "$calendar" "$os" "$filesystem" "$clock" "$ram" "$weather" "$timer" "$fan"
 )
-
-
 
 # Fetch weather
 log_message "INFO" "Fetching weather for ${WEATHER_LOCATION}"
@@ -325,13 +413,11 @@ print_docker_status() {
         log_message "INFO" "Newer Docker Compose version available: v$LATEST_COMPOSE_VERSION"
         echo -e "${yellow}  ✅ A newer version of Docker Compose is available (v$LATEST_COMPOSE_VERSION).${no_col}"
         UPDATE_NEEDED=1
-        #echo -e "\n"
     fi
     if [[ "$DOCKER_UPDATE" == "newer" ]]; then
         log_message "INFO" "Newer Docker Engine version available: v$LATEST_DOCKER_VERSION"
         echo -e "${yellow}  ✅ A newer version of Docker Engine is available (v$LATEST_DOCKER_VERSION).${no_col}"
         UPDATE_NEEDED=1
-        #echo -e "\n"
     fi
     if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
         log_message "INFO" "Docker and Docker Compose are up to date"
@@ -439,11 +525,6 @@ running_processes=$(ps aux 2>/dev/null | wc -l || echo "N/A")
 raspberry_model=$(cat /proc/device-tree/compatible 2>/dev/null | awk -v RS='\0' 'NR==1' || echo "N/A")
 
 # Display system info
-#echo -e ""
-#printf "  %-3s ${red}%-13s${no_col} ${white}%s\n" "" "Raspberry Pi SysInfo"
-#printf "  %-3s ${white}%-13s${no_col} %s" "──────────────────────────────────────────"
-#echo -e "\n"
-
 if [ "$show_docker_info" -eq 1 ]; then
     print_docker_status
 else
@@ -479,14 +560,13 @@ else
 fi
 
 #START OF FINAL INFO BLOCK EMOJI -----------------------------
-
 # Extract the first part of the date (up to the time)
 date_part=$(echo "$date_full" | cut -d' ' -f1-4 | sed 's/,$//')
 
 # Extract the second part (timezone)
 timezone_part=$(echo "$date_full" | cut -d' ' -f5-)
 
-#start of date + OS SYS  block emoji block  
+#start of date + OS SYS block emoji block  
 printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n" "Operating System:" "${os}"
 
 # Print the first line with the date and time
@@ -494,8 +574,6 @@ printf " %-3s ${white}%-13s${no_col}  %s\n" " ${calendar}" "Date:" "${date_part}
 
 # Print the second line with the timezone, indented
 printf "%s%s\n" "$(printf '%*s' 22)" "${timezone_part}"
-
-#echo -e "\n"
 
 fan_input_path=$(find /sys/devices/platform/ -name "fan1_input" 2>/dev/null)
 if [[ -n "$fan_input_path" ]]; then

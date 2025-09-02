@@ -1,6 +1,9 @@
 # PRESTO CONFIGS Default configuration settings for presto scripts
 # 0 = disabled, 1 = enabled
 
+#bash login logo [colorbars] for dockerplex media setups &  [pixel] for retropies 
+LOGO_STYLE="colorbars"
+
 # Show Docker container information
 show_docker_info=0
 
