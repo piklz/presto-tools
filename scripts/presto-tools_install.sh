@@ -24,18 +24,19 @@
 #             to use run:  sudo ./presto-tools_install.sh
 #
 #--------------------------------------------------------------------------------------------------
-# version 2.1
+# version 2.2
 # author        : piklz
 # github        : https://github.com/piklz/presto-tools.git
 # description   : This script installs the presto-tools and its dependencies.
 # changes       : - added bash completion for presto_drive_status.sh and log checks and updates
 #
 # Changelog:
+#   Version 2.2 (2025-08-26): checks for .bash_aliases copies over from presto_bash_aliases if not present
 #   Version 2.1 (2025-08-26): Consolidated logging to use systemd-cat, removed old file-based logging. Added robust check 
 #     for ~/.bash_aliases in ~/.bashrc to ensure it's sourced correctly on DietPi. Implemented --help flag for user guidance and standardized code style.
 #   Version 2.0 (2025-08-21): Refactored to use systemd-journald logging. Added --verbose flag. Improved error handling for whiptail and git commands.
 #   Version 1.1 (2025-08-15): Added a check to ensure scripts are executable. Added bash completion for presto_drive_status.sh.
-#   Version 1.0 (2025-08-01): Initial release with basic cloning and ~/.bashrc configuration.
+#   
 #
 #########################################################################################################################
 
@@ -180,36 +181,72 @@ fi
 chmod +x "$INSTALL_DIR/scripts/presto_bashwelcome.sh"
 chmod +x "$INSTALL_DIR/scripts/presto_drive_status.sh"
 chmod +x "$INSTALL_DIR/scripts/presto_update_full.py"
-chmod +x "$INSTALL_DIR/scripts/.presto_bash_aliases"
+#chmod +x "$INSTALL_DIR/scripts/.presto_bash_aliases" not a script !? this gets copied to .bash_aliases
 
-# Add presto_bashwelcome.sh to .bashrc
-WELCOME_SCRIPT="$INSTALL_DIR/scripts/presto_bashwelcome.sh"
-if [ -f "$WELCOME_SCRIPT" ]; then
-    if ! grep -q ". $WELCOME_SCRIPT" "$BASHRC"; then
-        log_message "INFO" "Adding presto_bashwelcome.sh to .bashrc..."
-        echo -e "\n#presto-tools Added: presto_bash_welcome script" >> "$BASHRC"
-        echo ". $WELCOME_SCRIPT" >> "$BASHRC"
-    else
-        log_message "INFO" "presto_bashwelcome.sh already added to .bashrc."
+do_configure_bash() {
+    local INSTALL_DIR="$USER_HOME/presto-tools"
+    local BASHRC="$USER_HOME/.bashrc"
+
+    # Copy .presto_bash_aliases to ~/.bash_aliases
+    local ALIAS_SRC="$INSTALL_DIR/scripts/.presto_bash_aliases"
+    local ALIAS_DEST="$USER_HOME/.bash_aliases"
+    
+    if [ ! -f "$ALIAS_SRC" ]; then
+        log_message "ERROR" ".presto_bash_aliases not found in $INSTALL_DIR/scripts"
+        return 1
     fi
-else
-    log_message "WARNING" "presto_bashwelcome.sh not found. Skipping addition to .bashrc."
-fi
-
-# Add the .bash_aliases check to .bashrc
-ALIAS_CHECK_PATTERN="if \[ -f ~\/.bash_aliases \]; then"
-if grep -q "$ALIAS_CHECK_PATTERN" "$BASHRC"; then
-    log_message "INFO" "Your .bashrc is already configured to source ~/.bash_aliases."
-else
-    log_message "INFO" ".bash_aliases check not found in .bashrc. Adding now..."
-    printf "\n# Alias definitions (added by presto-tools install).\n" >> "$BASHRC"
-    cat << 'EOF' >> "$BASHRC"
+    
+    if [ -f "$ALIAS_DEST" ]; then
+        if [ "$INTERACTIVE" = True ]; then
+            if whiptail --yesno "~/.bash_aliases already exists. Overwrite with .presto_bash_aliases?" 20 60; then
+                log_message "INFO" "Overwriting existing ~/.bash_aliases"
+                cp "$ALIAS_SRC" "$ALIAS_DEST" || { log_message "ERROR" "Failed to copy .presto_bash_aliases to ~/.bash_aliases"; return 1; }
+                chmod 644 "$ALIAS_DEST" || { log_message "ERROR" "Failed to set permissions on ~/.bash_aliases"; return 1; }
+            else
+                log_message "INFO" "Keeping existing ~/.bash_aliases"
+            fi
+        else
+            log_message "INFO" "Non-interactive mode: Skipping overwrite of existing ~/.bash_aliases"
+        fi
+    else
+        log_message "INFO" "Copying .presto_bash_aliases to ~/.bash_aliases"
+        cp "$ALIAS_SRC" "$ALIAS_DEST" || { log_message "ERROR" "Failed to copy .presto_bash_aliases to ~/.bash_aliases"; return 1; }
+        chmod 644 "$ALIAS_DEST" || { log_message "ERROR" "Failed to set permissions on ~/.bash_aliases"; return 1; }
+    fi
+    
+    # Add .bash_aliases check to .bashrc
+    local ALIAS_CHECK_PATTERN="if \[ -f ~\/.bash_aliases \]; then"
+    if grep -q "$ALIAS_CHECK_PATTERN" "$BASHRC"; then
+        log_message "INFO" "Your .bashrc is already configured to source ~/.bash_aliases."
+    else
+        log_message "INFO" ".bash_aliases check not found in .bashrc. Adding now..."
+        printf "\n# Alias definitions (added by presto-tools install).\n" >> "$BASHRC"
+        cat << 'EOF' >> "$BASHRC"
 if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 EOF
-    log_message "INFO" ".bash_aliases check added to $BASHRC."
-fi
+        log_message "INFO" ".bash_aliases check added to $BASHRC."
+    fi
+
+    # Add presto_bashwelcome.sh to .bashrc
+    local WELCOME_SCRIPT="$INSTALL_DIR/scripts/presto_bashwelcome.sh"
+    if [ -f "$WELCOME_SCRIPT" ]; then
+        if ! grep -q ". $WELCOME_SCRIPT" "$BASHRC"; then
+            log_message "INFO" "Adding presto_bashwelcome.sh to .bashrc..."
+            echo -e "\n#presto-tools Added: presto_bash_welcome script" >> "$BASHRC"
+            echo ". $WELCOME_SCRIPT" >> "$BASHRC"
+        else
+            log_message "INFO" "presto_bashwelcome.sh already added to .bashrc."
+        fi
+    else
+        log_message "WARNING" "presto_bashwelcome.sh not found. Skipping addition to .bashrc."
+    fi
+
+    log_message "INFO" "Bash configuration completed"
+    source "$BASHRC" || log_message "WARNING" "Failed to source .bashrc"
+    return 0
+}
 
 # Install bash completion
 install_presto_completion() {
@@ -258,6 +295,8 @@ EOF
     log_message "INFO" "Bash completion for presto_drive_status.sh installed successfully."
 }
 
+#RUN 
+do_configure_bash
 install_presto_completion
 
 log_message "INFO" "Presto-tools installation complete!"
