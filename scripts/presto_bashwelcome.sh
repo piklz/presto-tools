@@ -174,7 +174,7 @@ display_logo() {
             ;;
         ascii)
             echo -e "${cyan}  ╔════════╗${no_col}"
-            echo -e "${cyan}  ║ ${white}PRESTO${no_col} ║${no_col}"
+            echo -e "${cyan}  ║ ${white}PRESTO${cyan} ║${no_col}"
             echo -e "${cyan}  ╚════════╝${no_col}"
             ;;
         pixel)
