@@ -22,14 +22,14 @@
 #   managed by journald (compatible with future log2ram integration).
 #
 # Changelog:
+#   Version 1.0.8 (2025-09-02):
+#     - Added VERBOSE_MODE check to suppress non-critical messages in non-verbose mode (show_info dim grey parts...)
 #   Version 1.0.7 (2025-09-02):
 #     - Added 'pixel' logo style and --help option
 #   Version 1.0.6 (2025-09-02):
 #     - Fixed syntax error in SUDO_USER check and removed erroneous System: line
 #   Version 1.0.5 (2025-09-02):
 #     - Added -logo argument to select logo style (colorbars, simple, ascii)
-#   Version 1.0.4 (2025-09-10):
-#     - Remove erroneous colour ANSI tag in curl for wttr weather fetch
 #
 # Usage:
 #   Run the script directly: `bash presto_bashwelcome.sh [-logo {colorbars|simple|ascii|pixel}] [--help]`
@@ -42,7 +42,11 @@
 #   - Ensure dependencies (curl, docker, lsblk, df, free) are installed for full functionality.
 # -----------------------------------------------
 
-script_VERSION='1.0.7'
+
+# Global variables and defaults (overridden by presto_config.local 
+# ie. just cp presto_config.defaults in scripts folder to presto_config.local and edit that one)
+
+script_VERSION='1.0.8'
 VERBOSE_MODE=0  # Default to prevent integer expression error
 LOGO_STYLE="colorbars"  # Default logo style
 
@@ -169,9 +173,9 @@ display_logo() {
             echo -e "${cyan}PRESTO${no_col}"
             ;;
         ascii)
-            echo -e "${cyan}╔══════╗${no_col}"
+            echo -e "${cyan}╔════════╗${no_col}"
             echo -e "${cyan}║ PRESTO ║${no_col}"
-            echo -e "${cyan}╚══════╝${no_col}"
+            echo -e "${cyan}╚════════╝${no_col}"
             ;;
         pixel)
             cat << EOF
@@ -529,7 +533,9 @@ if [ "$show_docker_info" -eq 1 ]; then
     print_docker_status
 else
     log_message "INFO" "Docker status display skipped as per user preference"
-    echo -e "\n  ${grey_dim}Docker status display skipped as per user preference.${no_col}"
+    if [ "$VERBOSE_MODE" -eq 1 ]; then
+        echo -e "\n  ${grey_dim}Docker status display skipped as per user preference.${no_col}"
+    fi
 fi
 
 if [ "$show_smartdrive_info" -eq 1 ]; then
@@ -549,14 +555,18 @@ if [ "$show_smartdrive_info" -eq 1 ]; then
     fi
 else
     log_message "INFO" "SMART drive info display skipped as per user preference"
-    echo -e "\n  ${grey_dim}Drive smart information display skipped by user preference.${no_col}"
+    if [ "$VERBOSE_MODE" -eq 1 ]; then
+        echo -e "\n  ${grey_dim}Drive smart information display skipped by user preference.${no_col}"
+    fi
 fi
 
 if [ "$show_drive_info" -eq 1 ]; then
     print_pi_drive_info
 else
     log_message "INFO" "Drive info display skipped as per user preference"
-    echo -e "\n  ${grey_dim}Drive blkid information display skipped by user preference.${no_col}"
+    if [ "$VERBOSE_MODE" -eq 1 ]; then
+        echo -e "\n  ${grey_dim}Drive blkid information display skipped by user preference.${no_col}"
+    fi
 fi
 
 #START OF FINAL INFO BLOCK EMOJI -----------------------------
