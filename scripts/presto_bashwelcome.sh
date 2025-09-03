@@ -286,6 +286,8 @@ DEFAULT_CONFIG="$USER_HOME/presto-tools/scripts/presto_config.defaults"
 if [ ! -f "$DEFAULT_CONFIG" ]; then
     log_message "INFO" "Creating default configuration file $DEFAULT_CONFIG"
     mkdir -p "$USER_HOME/presto-tools/scripts" || { log_message "ERROR" "Failed to create directory for $DEFAULT_CONFIG" "Failed to create directory for $DEFAULT_CONFIG"; echo "Error: Could not create directory for $DEFAULT_CONFIG" >&2; exit 1; }
+    cat << EOF > "$DEFAULT_CONFIG"
+                                                              
 # PRESTO CONFIGS Default configuration settings for presto scripts
 # 0 = disabled, 1 = enabled
 
