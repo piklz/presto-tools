@@ -173,9 +173,9 @@ display_logo() {
             echo -e "${cyan}PRESTO${no_col}"
             ;;
         ascii)
-            echo -e "${cyan}╔════════╗${no_col}"
-            echo -e "${cyan}║ PRESTO ║${no_col}"
-            echo -e "${cyan}╚════════╝${no_col}"
+            echo -e "${cyan}  ╔════════╗${no_col}"
+            echo -e "${cyan}  ║ ${white}PRESTO${no_col} ║${no_col}"
+            echo -e "${cyan}  ╚════════╝${no_col}"
             ;;
         pixel)
             cat << EOF
@@ -287,15 +287,30 @@ if [ ! -f "$DEFAULT_CONFIG" ]; then
     log_message "INFO" "Creating default configuration file $DEFAULT_CONFIG"
     mkdir -p "$USER_HOME/presto-tools/scripts" || { log_message "ERROR" "Failed to create directory for $DEFAULT_CONFIG" "Failed to create directory for $DEFAULT_CONFIG"; echo "Error: Could not create directory for $DEFAULT_CONFIG" >&2; exit 1; }
     cat << EOF > "$DEFAULT_CONFIG"
-# Presto default configuration
-show_docker_info=1
+  GNU nano 7.2                                                          presto-tools/scripts/presto_config.local *                                                                 
+# PRESTO CONFIGS Default configuration settings for presto scripts
+# 0 = disabled, 1 = enabled
+
+#bash login logo [colorbars] for dockerplex media setups &  [pixel] for retropies 
+LOGO_STYLE="colorbars"
+
+# Show Docker container information
+show_docker_info=0
+
+# Show SMART drive health information
 show_smartdrive_info=0
-show_drive_info=1
+
+# Show general drive information
+show_drive_info=0
+
 VERBOSE_MODE=0
 log_level="INFO"
 CHECK_DISK_SPACE=1
 WEATHER_LOCATION="London"
+
+#presto_drive_status
 SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"
+
 DEFAULT_OUTPUT_MODE="simple_full"
 EOF
     chown "$USER:$USER" "$DEFAULT_CONFIG" 2>/dev/null || true
