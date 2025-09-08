@@ -27,11 +27,7 @@ if [ -d "$HOME/presto" ]; then
     alias presto_prune_volumes="~/presto/scripts/prune-volumes.sh"
     alias presto_docker_monitor="~/presto-tools/scripts/presto_docker_monitor.sh"
     alias presto_engine_update="~/presto-tools/scripts/presto_docker-engine_update.sh
-
-
-fi
-
-
+    fi
 #my  rsync cp... replacing cp command + added progress bar!
 alias cpv="rsync -ah --info=progress2"
 
