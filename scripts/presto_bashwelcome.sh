@@ -365,6 +365,9 @@ fi
 
 
 # Function to print Docker status
+# Function: print_docker_status
+# Purpose: Displays Docker stack information including images, containers, volumes, and checks for updates.
+# Parameters: None. Uses global variables and system commands.
 print_docker_status() {
     if ! is_command docker; then
         log_message "INFO" "Docker not installed, skipping Docker status"
@@ -416,8 +419,6 @@ print_docker_status() {
             #    percentage = 85
             #} #should show text asking you to run presto_prune command
 
-
-
             # Track if percentage > 80% and Images percentage
             if (percentage > 1) {
                 print "PRUNE_FLAG 1" > "/dev/stderr"
@@ -431,25 +432,35 @@ print_docker_status() {
             } else {
                 reclaimable_formatted = reclaimable
             }
+            # Output: type total active size percentage reclaimable_formatted
+            print type_str " " total " " active " " size " " percentage " " reclaimable_formatted
             # Determine color
-            if (percentage < 20) {
-                color = ${green}  # Green
-            } else if (percentage <= 50) {
-                color = ${yellow}  # Orange
-            } else {
-                color = ${red}  # Red
-            }
-            print type_str " " total " " active " " size " " color " " reclaimable_formatted
-        }' 2> /tmp/docker_status_flags | while read -r type total active size color reclaimable; do
-        printf "  ${white}%-12s %-8s %-8s %-8s %s%-13s${no_col}\n" "$type" "$total" "$active" "$size" "$color" "$reclaimable"
+        # Determine color in shell
+        if [ "$percentage" -lt 20 ]; then
+            color="$green"
+        elif [ "$percentage" -le 50 ]; then
+            color="$yellow"
+        else
+            color="$red"
+        fi
+    }' 2> /tmp/docker_status_flags | while IFS=' ' read -r type total active size percentage reclaimable_formatted; do
+        # Print formatted output with color based on percentage
+        if [ "$percentage" -lt 20 ]; then
+            color="$green"
+        elif [ "$percentage" -le 50 ]; then
+            color="$yellow"
+        else
+            color="$red"
+        fi
+        printf "  ${color}%-12s %7s %8s %8s %13s${no_col}\n" "$type" "$total" "$active" "$size" "$reclaimable_formatted"
     done)
     echo -e "${docker_filesystem_status}"
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
     # Check for prune flag and images percentage
     if [ -f /tmp/docker_status_flags ]; then
-        while read -r flag value; do
-            if [ "$flag" = "PRUNE_FLAG" ]; then
-                show_prune_message=$value
+    if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 1 ]; then
+        echo -e "${yellow}${filesystem}Type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
+    fi
             elif [ "$flag" = "IMAGES_PERC" ]; then
                 images_percentage=$value
             fi
