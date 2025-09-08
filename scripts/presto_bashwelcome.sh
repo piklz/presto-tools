@@ -377,6 +377,8 @@ print_docker_status() {
     log_message "INFO" "Displaying Docker status"
     echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ─────────────────PRESTO─────╮"
     echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE     ${green}RECLAIMABLE${no_col}"
+    show_prune_message=0
+    images_percentage=0
     docker_filesystem_status=$(docker system df | awk '
         NR > 1 {
             if ($1 == "Local" && $2 == "Volumes") {
@@ -408,6 +410,21 @@ print_docker_status() {
             } else {
                 percentage = 0
             }
+
+            # FOR TESTING: Force Images percentage to 85% to test logic (comment out for real use)
+            #if (type_str == "Images") {
+            #    percentage = 85
+            #} #should show text asking you to run presto_prune command
+
+
+
+            # Track if percentage > 80% and Images percentage
+            if (percentage > 1) {
+                print "PRUNE_FLAG 1" > "/dev/stderr"
+                if (type_str == "Images") {
+                    print "IMAGES_PERC " percentage > "/dev/stderr"
+                }
+            }
             # Only include percentage if > 0
             if (percentage > 0) {
                 reclaimable_formatted = sprintf("%s (%.0f%%)", reclaimable, percentage)
@@ -423,11 +440,26 @@ print_docker_status() {
                 color = "\033[31m"  # Red
             }
             print type_str " " total " " active " " size " " color " " reclaimable_formatted
-        }' | while read -r type total active size color reclaimable; do
+        }' 2> /tmp/docker_status_flags | while read -r type total active size color reclaimable; do
         printf "  \033[37m%-12s %-8s %-8s %-8s %s%-13s${no_col}\n" "$type" "$total" "$active" "$size" "$color" "$reclaimable"
     done)
-    echo -e "${docker_filesystem_status}${no_col}"
+    echo -e "${docker_filesystem_status}"
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
+    # Check for prune flag and images percentage
+    if [ -f /tmp/docker_status_flags ]; then
+        while read -r flag value; do
+            if [ "$flag" = "PRUNE_FLAG" ]; then
+                show_prune_message=$value
+            elif [ "$flag" = "IMAGES_PERC" ]; then
+                images_percentage=$value
+            fi
+        done < /tmp/docker_status_flags
+        rm -f /tmp/docker_status_flags
+    fi
+    if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 80 ]; then
+        echo -e "\033[37mSave space? type 'presto_prune_images' to remove $images_percentage% of Images${no_col}"
+    fi
+}
 
     log_message "INFO" "Checking Docker and Compose versions"
     if ! timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest >/dev/null 2>&1; then
