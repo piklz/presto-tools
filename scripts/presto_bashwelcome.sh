@@ -376,14 +376,14 @@ print_docker_status() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping Docker status"; echo -e "${yellow}Docker info unavailable${no_col}"; return 1; }
     log_message "INFO" "Displaying Docker status"
     echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ─────────────────PRESTO─────╮"
-    echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE   ${green}RECLAIMABLE${no_col}"
+    echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE         ${green}RECLAIMABLE${no_col}"
     docker system df | awk '
         # Skip the header line
         NR > 1 {
-            # Check for the multi-word "Local Vols" type
+            # Check for the multi-word "Local Volumes" type
             if ($1 == "Local" && $2 == "Volumes") {
                 # Print "Local Volumes" as a single field
-                printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Vols", $3, $4, $5, $6
+                printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Volumes", $3, $4, $5, $6
             } 
             # Check for the multi-word "Build Cache" type
             else if ($1 == "Build" && $2 == "Cache") {
@@ -396,6 +396,7 @@ print_docker_status() {
             }
         }'
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
+
 
 
     log_message "INFO" "Checking Docker and Compose versions"
