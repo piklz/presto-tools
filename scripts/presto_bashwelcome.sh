@@ -22,7 +22,8 @@
 #   managed by journald (compatible with future log2ram integration).
 #
 # Changelog:
-#   Version 1.0.9 (2024-06-10):fixed output alignment on docker status stats
+#   Version 1.0.9 (2024-06-10):
+#     -fixed output alignment on docker status stats
 #   Version 1.0.8 (2025-09-02):
 #     - Added VERBOSE_MODE check to suppress non-critical messages in non-verbose mode (show_info dim grey parts...)
 #   Version 1.0.7 (2025-09-02):
@@ -375,7 +376,7 @@ print_docker_status() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping Docker status"; echo -e "${yellow}Docker info unavailable${no_col}"; return 1; }
     log_message "INFO" "Displaying Docker status"
     echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ─────────────────PRESTO─────╮"
-    echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE         ${green}RECLAIMABLE${no_col}"
+    echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE      ${green}RECLAIMABLE${no_col}"
     docker system df | awk '
         # Skip the header line
         NR > 1 {
