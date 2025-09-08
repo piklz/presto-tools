@@ -457,7 +457,7 @@ print_docker_status() {
         rm -f /tmp/docker_status_flags
     fi
     if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 80 ]; then
-        echo -e "\033[37mSave space? type 'presto_prune_images' to remove $images_percentage% of Images${no_col}"
+        echo -e "${yellow}${filesystem}Save space? type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
     fi
 
 
