@@ -13,7 +13,7 @@
 ##################################################################################################
 #-------------------------------------------------------------------------------------------------
 # presto-tools Welcome Script
-# Version: 1.0.7
+# Version: 1.0.9
 # Author: piklz
 # GitHub: https://github.com/piklz/presto-tools.git
 # Description:
@@ -22,14 +22,13 @@
 #   managed by journald (compatible with future log2ram integration).
 #
 # Changelog:
+#   Version 1.0.9 (2024-06-10):fixed output alignment on docker status stats
 #   Version 1.0.8 (2025-09-02):
 #     - Added VERBOSE_MODE check to suppress non-critical messages in non-verbose mode (show_info dim grey parts...)
 #   Version 1.0.7 (2025-09-02):
 #     - Added 'pixel' logo style and --help option
 #   Version 1.0.6 (2025-09-02):
 #     - Fixed syntax error in SUDO_USER check and removed erroneous System: line
-#   Version 1.0.5 (2025-09-02):
-#     - Added -logo argument to select logo style (colorbars, simple, ascii)
 #
 # Usage:
 #   Run the script directly: `bash presto_bashwelcome.sh [-logo {colorbars|simple|ascii|pixel}] [--help]`
@@ -46,7 +45,7 @@
 # Global variables and defaults (overridden by presto_config.local 
 # ie. just cp presto_config.defaults in scripts folder to presto_config.local and edit that one)
 
-script_VERSION='1.0.8'
+script_VERSION='1.0.9'
 VERBOSE_MODE=0  # Default to prevent integer expression error
 LOGO_STYLE="colorbars"  # Default logo style
 
