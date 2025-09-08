@@ -365,7 +365,6 @@ fi
 
 
 # Function to print Docker status
-
 print_docker_status() {
     if ! is_command docker; then
         log_message "INFO" "Docker not installed, skipping Docker status"
@@ -384,19 +383,7 @@ print_docker_status() {
             # Check for the multi-word "Local Volumes" type
             if ($1 == "Local" && $2 == "Volumes") {
                 # Print "Local Volumes" as a single field
-<<<<<<< HEAD
-<<<<<<< HEAD
-                printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Volumes", $3, $4, $5, $6
-=======
-<<<<<<< HEAD
-                printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Volumes", $3, $4, $5, $6
-=======
                 printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Vols", $3, $4, $5, $6
->>>>>>> develop
->>>>>>> c45ebda94afc80ab7f0f15ad57fc8bf35a0cd874
-=======
-                printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Volumes", $3, $4, $5, $6
->>>>>>> develop
             } 
             # Check for the multi-word "Build Cache" type
             else if ($1 == "Build" && $2 == "Cache") {
@@ -410,15 +397,6 @@ print_docker_status() {
         }'
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
 
-
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> develop
-=======
->>>>>>> develop
     log_message "INFO" "Checking Docker and Compose versions"
     if ! timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest >/dev/null 2>&1; then
         log_message "WARNING" "GitHub API unavailable, skipping version check"
