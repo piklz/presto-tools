@@ -466,7 +466,7 @@ print_docker_status() {
     fi
     
     # Call the new function to check for updates
-    # check_docker_updates
+    check_docker_updates
 }
 
 
@@ -642,7 +642,7 @@ raspberry_model=$(cat /proc/device-tree/compatible 2>/dev/null | awk -v RS='\0' 
 # Display system info
 if [ "$show_docker_info" -eq 1 ]; then
     print_docker_status
-    check_docker_updates
+    
 else
     log_message "INFO" "Docker status display skipped as per user preference"
     if [ "$VERBOSE_MODE" -eq 1 ]; then
