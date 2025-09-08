@@ -483,7 +483,7 @@ check_docker_updates() {
     log_message "INFO" "Checking Docker and Compose versions"
 
     # Check for network connectivity by attempting to reach GitHub API
-    if ! timeout 2 curl -s [https://api.github.com/repos/docker/compose/releases/latest](https://api.github.com/repos/docker/compose/releases/latest) >/dev/null 2>&1; then
+    if ! timeout 2 curl -s "https://api.github.com/repos/docker/compose/releases/latest" >/dev/null 2>&1; then
         log_message "WARNING" "GitHub API unavailable, skipping version check"
         echo -e "${red}  Docker (apt) ver checker down right now .. continue${no_col}"
         echo -e "\n"
