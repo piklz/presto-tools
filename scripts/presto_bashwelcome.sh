@@ -363,6 +363,8 @@ if [[ "$weather_info" == "..might be sunny somewhere?" ]]; then
     echo -e "  ${grey_dim}The weather [wttr.in] is downright now .. continue${no_col}\n"
 fi
 
+
+
 print_docker_status() {
     if ! is_command docker; then
         log_message "INFO" "Docker not installed, skipping Docker status"
@@ -374,11 +376,11 @@ print_docker_status() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping Docker status"; echo -e "${yellow}Docker info unavailable${no_col}"; return 1; }
     log_message "INFO" "Displaying Docker status"
     echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ─────────────────PRESTO─────╮"
-    echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE         ${green}RECLAIMABLE${no_col}"
+    echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE   ${green}RECLAIMABLE${no_col}"
     docker system df | awk '
         # Skip the header line
         NR > 1 {
-            # Check for the multi-word "Local Volumes" type
+            # Check for the multi-word "Local Vols" type
             if ($1 == "Local" && $2 == "Volumes") {
                 # Print "Local Volumes" as a single field
                 printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Vols", $3, $4, $5, $6
@@ -394,6 +396,7 @@ print_docker_status() {
             }
         }'
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
+
 
     log_message "INFO" "Checking Docker and Compose versions"
     if ! timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest >/dev/null 2>&1; then
