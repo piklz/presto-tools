@@ -472,10 +472,9 @@ print_docker_status() {
     fi
     
     # Call the new function to check for updates
-    check_docker_updates
+    #check_docker_updates
 }
 
-                    --------------------------------------------------------------------------
 
 # Function: check_docker_updates
 # Purpose: Checks and displays the status of Docker and Docker Compose versions.
