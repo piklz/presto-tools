@@ -487,12 +487,12 @@ check_docker_updates() {
     
     # Docker Compose version check
     CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2- || echo "N/A")
-    LATEST_COMPOSE_TAG=$(curl -s "[https://api.github.com/repos/docker/compose/releases/latest](https://api.github.com/repos/docker/compose/releases/latest)" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
+    LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
     LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
 
     # Docker Engine version check
     CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d '-' -f 1 || echo "N/A")
-    LATEST_DOCKER_TAG=$(curl -s "[https://api.github.com/repos/moby/moby/releases/latest](https://api.github.com/repos/moby/moby/releases/latest)" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
+    LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
     LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#v}"
 
     # Compare versions using a robust awk function
@@ -539,7 +539,8 @@ check_docker_updates() {
         echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
         echo -e "\n"
     else
-        echo -e "${magenta}  ✅ Run PRESTO_ENGINE_UPDATE to update Docker/Compose Engine.${no_col}"
+        echo -e "${magenta}  ✅ Run 'presto_engine_update' to update Docker/Compose Engine.${no_col}"
+        echo -e "Apt updates slower than github ver.So rerun this later if nothing happens today "
         echo -e "\n"
     fi
 }
