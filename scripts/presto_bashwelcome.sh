@@ -459,7 +459,7 @@ print_docker_status() {
     if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 80 ]; then
         echo -e "\033[37mSave space? type 'presto_prune_images' to remove $images_percentage% of Images${no_col}"
     fi
-}
+
 
     log_message "INFO" "Checking Docker and Compose versions"
     if ! timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest >/dev/null 2>&1; then
