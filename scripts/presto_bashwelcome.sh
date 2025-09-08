@@ -435,9 +435,9 @@ print_docker_status() {
             print type_str " " total " " active " " size " " percentage " " reclaimable_formatted
         }' 2> /tmp/docker_status_flags | while IFS=' ' read -r type total active size percentage reclaimable_formatted; do
             # Determine color based on percentage in the shell
-            if [ "$(echo "$percentage > 50" | bc -l)" -eq 1 ]; then
+            if (( $(echo "$percentage > 50" | awk '{print ($1 > 0)}') )); then
                 color="$red"
-            elif [ "$(echo "$percentage > 20" | bc -l)" -eq 1 ]; then
+            elif (( $(echo "$percentage > 20" | awk '{print ($1 > 0)}') )); then
                 color="$yellow"
             else
                 color="$green"
