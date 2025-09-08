@@ -433,11 +433,11 @@ print_docker_status() {
             }
             # Determine color
             if (percentage < 20) {
-                color = "${green}"  # Green
+                color = ${green}  # Green
             } else if (percentage <= 50) {
-                color = "${yellow}"  # Orange
+                color = ${yellow}  # Orange
             } else {
-                color = "${red}"  # Red
+                color = ${red}  # Red
             }
             print type_str " " total " " active " " size " " color " " reclaimable_formatted
         }' 2> /tmp/docker_status_flags | while read -r type total active size color reclaimable; do
