@@ -376,25 +376,57 @@ print_docker_status() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping Docker status"; echo -e "${yellow}Docker info unavailable${no_col}"; return 1; }
     log_message "INFO" "Displaying Docker status"
     echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ─────────────────PRESTO─────╮"
-    echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE      ${green}RECLAIMABLE${no_col}"
-    docker system df | awk '
-        # Skip the header line
+    echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE     ${green}RECLAIMABLE${no_col}"
+    docker_filesystem_status=$(docker system df | awk '
         NR > 1 {
-            # Check for the multi-word "Local Volumes" type
             if ($1 == "Local" && $2 == "Volumes") {
-                # Print "Local Volumes" as a single field
-                printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Vols", $3, $4, $5, $6
-            } 
-            # Check for the multi-word "Build Cache" type
-            else if ($1 == "Build" && $2 == "Cache") {
-                # Print "Build Cache" as a single field
-                printf "  %-12s %-8s %-8s %-12s %-12s\n", "Build Cache", $3, $4, $5, $6
-            } 
-            # For all other single-word types (Images, Containers)
-            else {
-                printf "  %-12s %-8s %-8s %-12s %-12s\n", $1, $2, $3, $4, $5
+                type_str = "LocalVols"
+                total = $3
+                active = $4
+                size = $5
+                reclaimable = $6
+                perc_str = $7
+            } else if ($1 == "Build" && $2 == "Cache") {
+                type_str = "BuildCache"
+                total = $3
+                active = $4
+                size = $5
+                reclaimable = $6
+                perc_str = $7
+            } else {
+                type_str = $1
+                total = $2
+                active = $3
+                size = $4
+                reclaimable = $5
+                perc_str = $6
             }
-        }'
+            # Extract percentage
+            if (perc_str ~ /^\([0-9]*\.?[0-9]*%?\)$/) {
+                gsub(/[\(\)%]/, "", perc_str)
+                percentage = perc_str + 0
+            } else {
+                percentage = 0
+            }
+            # Only include percentage if > 0
+            if (percentage > 0) {
+                reclaimable_formatted = sprintf("%s (%.0f%%)", reclaimable, percentage)
+            } else {
+                reclaimable_formatted = reclaimable
+            }
+            # Determine color
+            if (percentage < 20) {
+                color = "\033[32m"  # Green
+            } else if (percentage <= 50) {
+                color = "\033[33m"  # Orange
+            } else {
+                color = "\033[31m"  # Red
+            }
+            print type_str " " total " " active " " size " " color " " reclaimable_formatted
+        }' | while read -r type total active size color reclaimable; do
+        printf "  \033[37m%-12s %-8s %-8s %-8s %s%-13s${no_col}\n" "$type" "$total" "$active" "$size" "$color" "$reclaimable"
+    done)
+    echo -e "${docker_filesystem_status}${no_col}"
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
 
     log_message "INFO" "Checking Docker and Compose versions"
