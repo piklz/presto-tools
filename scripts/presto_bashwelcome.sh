@@ -464,12 +464,13 @@ print_docker_status() {
             elif [ "$flag" = "IMAGES_PERC" ]; then
                 images_percentage=$value
             fi
-        done < /tmp/docker_status_flags
-        rm -f /tmp/docker_status_flags
-    fi
+        done
+    fi < /tmp/docker_status_flags
+    rm -f /tmp/docker_status_flags
     if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 80 ]; then
         echo -e "${yellow}${filesystem}Type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
     fi
+
 
 
     log_message "INFO" "Checking Docker and Compose versions"
