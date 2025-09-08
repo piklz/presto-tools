@@ -433,15 +433,15 @@ print_docker_status() {
             }
             # Determine color
             if (percentage < 20) {
-                color = "\033[32m"  # Green
+                color = "${green}"  # Green
             } else if (percentage <= 50) {
-                color = "\033[33m"  # Orange
+                color = "${yellow}"  # Orange
             } else {
-                color = "\033[31m"  # Red
+                color = "${red}"  # Red
             }
             print type_str " " total " " active " " size " " color " " reclaimable_formatted
         }' 2> /tmp/docker_status_flags | while read -r type total active size color reclaimable; do
-        printf "  \033[37m%-12s %-8s %-8s %-8s %s%-13s${no_col}\n" "$type" "$total" "$active" "$size" "$color" "$reclaimable"
+        printf "  ${white}%-12s %-8s %-8s %-8s %s%-13s${no_col}\n" "$type" "$total" "$active" "$size" "$color" "$reclaimable"
     done)
     echo -e "${docker_filesystem_status}"
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
@@ -457,7 +457,7 @@ print_docker_status() {
         rm -f /tmp/docker_status_flags
     fi
     if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 80 ]; then
-        echo -e "${yellow}${filesystem}Save space? type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
+        echo -e "${yellow}${filesystem}Type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
     fi
 
 
