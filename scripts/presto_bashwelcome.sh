@@ -461,11 +461,13 @@ print_docker_status() {
     if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 1 ]; then
         echo -e "${yellow}${filesystem}Type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
     fi
-            elif [ "$flag" = "IMAGES_PERC" ]; then
-                images_percentage=$value
-            fi
-        done
-    fi < /tmp/docker_status_flags
+    while read -r flag value; do
+        if [ "$flag" = "PRUNE_FLAG" ]; then
+            show_prune_message=1
+        elif [ "$flag" = "IMAGES_PERC" ]; then
+            images_percentage=$value
+        fi
+    done < /tmp/docker_status_flags
     rm -f /tmp/docker_status_flags
     if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 80 ]; then
         echo -e "${yellow}${filesystem}Type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
