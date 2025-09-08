@@ -540,7 +540,8 @@ check_docker_updates() {
         echo -e "\n"
     else
         echo -e "${magenta}  ✅ Run 'presto_engine_update' to update Docker/Compose Engine.${no_col}"
-        echo -e "Apt updates slower than github ver.So rerun this later if nothing happens today "
+        echo -e "     Apt updates slower than github ver.So re-run this later."
+        echo -e "     ..if nothing happens today "
         echo -e "\n"
     fi
 }
