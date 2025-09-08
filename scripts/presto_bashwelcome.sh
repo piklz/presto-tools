@@ -365,7 +365,6 @@ fi
 
 
 # Function to print Docker status
-
 print_docker_status() {
     if ! is_command docker; then
         log_message "INFO" "Docker not installed, skipping Docker status"
@@ -397,7 +396,6 @@ print_docker_status() {
             }
         }'
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
-
 
 
     log_message "INFO" "Checking Docker and Compose versions"
