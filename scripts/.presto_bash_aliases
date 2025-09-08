@@ -13,7 +13,6 @@ alias presto_dusummary="du -h -s -c  *"
 
 # presto-tools aliases 
 alias presto_drive_status="sudo ~/presto-tools/scripts/presto_drive_status.sh"
-alias presto_docker_monitor="~/presto-tools/scripts/presto_docker_monitor.sh"
 alias presto_usb_install="sudo ~/presto-tools/scripts/presto_usb_install.sh"
 alias presto-tools_install='~/presto-tools/scripts/presto-tools_install.sh'
 alias presto-welcome='~/presto-tools/scripts/presto_bashwelcome.sh'
@@ -26,6 +25,9 @@ if [ -d "$HOME/presto" ]; then
     alias presto_launchmenu="~/presto/presto_launch.sh"
     alias presto_prune_images="~/presto/scripts/prune-images.sh"
     alias presto_prune_volumes="~/presto/scripts/prune-volumes.sh"
+    alias presto_docker_monitor="~/presto-tools/scripts/presto_docker_monitor.sh"
+    alias presto_engine_update="~/presto-tools/scripts/presto_docker-engine_update.sh
+
 
 fi
 
