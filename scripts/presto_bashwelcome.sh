@@ -381,7 +381,11 @@ print_docker_status() {
             # Check for the multi-word "Local Volumes" type
             if ($1 == "Local" && $2 == "Volumes") {
                 # Print "Local Volumes" as a single field
+<<<<<<< HEAD
                 printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Volumes", $3, $4, $5, $6
+=======
+                printf "  %-12s %-8s %-8s %-12s %-12s\n", "Local Vols", $3, $4, $5, $6
+>>>>>>> develop
             } 
             # Check for the multi-word "Build Cache" type
             else if ($1 == "Build" && $2 == "Cache") {
