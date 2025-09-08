@@ -259,7 +259,7 @@ log_message() {
         fi
     fi
 }
-}
+
 
 # Check disk space before critical operations
 check_disk_space() {
@@ -366,25 +366,26 @@ fi
 
 
 # Function to print Docker status
-# Function: print_docker_status
-# Purpose: Displays Docker stack information including images, containers, volumes, and checks for updates.
-# Parameters: None. Uses global variables and system commands.
+# Purpose: Displays Docker stack information and checks for updates.
+# Parameters: None.
 print_docker_status() {
     if ! is_command docker; then
         log_message "INFO" "Docker not installed, skipping Docker status"
         echo -e "     "
-        echo -e "\e[33;1m  no docker info - no systems running yet \e[0m"
+        echo -e "\e[33;1m   no docker info - no systems running yet \e[0m"
         echo -e "\n"
         return 0
     fi
+
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping Docker status"; echo -e "${yellow}Docker info unavailable${no_col}"; return 1; }
     log_message "INFO" "Displaying Docker status"
     echo -e "${cyan}╭─── DOCKER STACK INFO 🐋 ─────────────────PRESTO─────╮"
     echo -e "  ${cyan}TYPE         ${cyan}TOTAL    ${magenta}ACTIVE   ${white}SIZE     ${green}RECLAIMABLE${no_col}"
-    show_prune_message=0
-    images_percentage=0
+    
+    # Run the `docker system df` command and pipe to awk to process and prepare the output
     docker_filesystem_status=$(docker system df | awk '
         NR > 1 {
+            # Normalize the type string
             if ($1 == "Local" && $2 == "Volumes") {
                 type_str = "LocalVols"
                 total = $3
@@ -407,94 +408,100 @@ print_docker_status() {
                 reclaimable = $5
                 perc_str = $6
             }
-            # Extract percentage
+            
+            # Extract percentage value
+            percentage = 0
             if (perc_str ~ /^\([0-9]*\.?[0-9]*%?\)$/) {
                 gsub(/[\(\)%]/, "", perc_str)
                 percentage = perc_str + 0
-            } else {
-                percentage = 0
             }
-
-            # FOR TESTING: Force Images percentage to 85% to test logic (comment out for real use)
-            #if (type_str == "Images") {
-            #    percentage = 85
-            #} #should show text asking you to run presto_prune command
-
-            # Track if percentage > 80% and Images percentage
+            
+            # Print flags for the shell script to read
             if (percentage > 1) {
                 print "PRUNE_FLAG 1" > "/dev/stderr"
                 if (type_str == "Images") {
                     print "IMAGES_PERC " percentage > "/dev/stderr"
                 }
             }
-            # Only include percentage if > 0
+            
+            # Format the reclaimable string with percentage
             if (percentage > 0) {
                 reclaimable_formatted = sprintf("%s (%.0f%%)", reclaimable, percentage)
             } else {
                 reclaimable_formatted = reclaimable
             }
+            
             # Output: type total active size percentage reclaimable_formatted
             print type_str " " total " " active " " size " " percentage " " reclaimable_formatted
-            # Determine color
-        # Determine color in shell
-        if [ "$percentage" -lt 20 ]; then
-            color="$green"
-        elif [ "$percentage" -le 50 ]; then
-            color="$yellow"
-        else
-            color="$red"
-        fi
-    }' 2> /tmp/docker_status_flags | while IFS=' ' read -r type total active size percentage reclaimable_formatted; do
-        # Print formatted output with color based on percentage
-        if [ "$percentage" -lt 20 ]; then
-            color="$green"
-        elif [ "$percentage" -le 50 ]; then
-            color="$yellow"
-        else
-            color="$red"
-        fi
-        printf "  ${color}%-12s %7s %8s %8s %13s${no_col}\n" "$type" "$total" "$active" "$size" "$reclaimable_formatted"
-    done)
+        }' 2> /tmp/docker_status_flags | while IFS=' ' read -r type total active size percentage reclaimable_formatted; do
+            # Determine color based on percentage in the shell
+            if [ "$(echo "$percentage > 50" | bc -l)" -eq 1 ]; then
+                color="$red"
+            elif [ "$(echo "$percentage > 20" | bc -l)" -eq 1 ]; then
+                color="$yellow"
+            else
+                color="$green"
+            fi
+            
+            printf "  ${color}%-12s %7s %8s %8s %13s${no_col}\n" "$type" "$total" "$active" "$size" "$reclaimable_formatted"
+        done)
+        
     echo -e "${docker_filesystem_status}"
     echo -e "${cyan}╰─────────────────────────────────────────────────────╯${no_col}"
-    # Check for prune flag and images percentage
+    
+    # Check for prune flag and images percentage from the temp file
     if [ -f /tmp/docker_status_flags ]; then
-    if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 1 ]; then
-        echo -e "${yellow}${filesystem}Type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
-    fi
-    while read -r flag value; do
-        if [ "$flag" = "PRUNE_FLAG" ]; then
-            show_prune_message=1
-        elif [ "$flag" = "IMAGES_PERC" ]; then
-            images_percentage=$value
+        show_prune_message=0
+        images_percentage=0
+        
+        while read -r flag value; do
+            if [ "$flag" = "PRUNE_FLAG" ]; then
+                show_prune_message=1
+            elif [ "$flag" = "IMAGES_PERC" ]; then
+                images_percentage=$value
+            fi
+        done < /tmp/docker_status_flags
+        
+        # Correctly check and display the message
+        if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 80 ]; then
+            echo -e "${yellow}Type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
         fi
-    done < /tmp/docker_status_flags
-    rm -f /tmp/docker_status_flags
-    if [ "$show_prune_message" -eq 1 ] && [ "$images_percentage" -gt 80 ]; then
-        echo -e "${yellow}${filesystem}Type '${yellow}presto_prune_images${no_col}' to remove $images_percentage% of Images${no_col}"
+        
+        # Clean up the temp file
+        rm -f /tmp/docker_status_flags
     fi
+    
+    # Call the new function to check for updates
+    check_docker_updates
+}
 
+                    --------------------------------------------------------------------------
 
-
+# Function: check_docker_updates
+# Purpose: Checks and displays the status of Docker and Docker Compose versions.
+# Parameters: None.
+check_docker_updates() {
     log_message "INFO" "Checking Docker and Compose versions"
-    if ! timeout 2 curl -s https://api.github.com/repos/docker/compose/releases/latest >/dev/null 2>&1; then
+
+    # Check for network connectivity by attempting to reach GitHub API
+    if ! timeout 2 curl -s [https://api.github.com/repos/docker/compose/releases/latest](https://api.github.com/repos/docker/compose/releases/latest) >/dev/null 2>&1; then
         log_message "WARNING" "GitHub API unavailable, skipping version check"
         echo -e "${red}  Docker (apt) ver checker down right now .. continue${no_col}"
         echo -e "\n"
         return 0
     fi
-
+    
     # Docker Compose version check
     CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2- || echo "N/A")
-    LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
+    LATEST_COMPOSE_TAG=$(curl -s "[https://api.github.com/repos/docker/compose/releases/latest](https://api.github.com/repos/docker/compose/releases/latest)" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
     LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
 
     # Docker Engine version check
-    CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo "N/A")
-    LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
+    CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d '-' -f 1 || echo "N/A")
+    LATEST_DOCKER_TAG=$(curl -s "[https://api.github.com/repos/moby/moby/releases/latest](https://api.github.com/repos/moby/moby/releases/latest)" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
     LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#v}"
 
-    # Compare versions
+    # Compare versions using a robust awk function
     compare_versions() {
         local current="$1" latest="$2"
         if [[ "$current" == "N/A" || "$latest" == "N/A" ]]; then
@@ -520,27 +527,30 @@ print_docker_status() {
     DOCKER_UPDATE=$(compare_versions "$CURRENT_DOCKER_VERSION" "$LATEST_DOCKER_VERSION")
 
     UPDATE_NEEDED=0
+    
     if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
         log_message "INFO" "Newer Docker Compose version available: v$LATEST_COMPOSE_VERSION"
         echo -e "${yellow}  ✅ A newer version of Docker Compose is available (v$LATEST_COMPOSE_VERSION).${no_col}"
         UPDATE_NEEDED=1
     fi
+    
     if [[ "$DOCKER_UPDATE" == "newer" ]]; then
         log_message "INFO" "Newer Docker Engine version available: v$LATEST_DOCKER_VERSION"
         echo -e "${yellow}  ✅ A newer version of Docker Engine is available (v$LATEST_DOCKER_VERSION).${no_col}"
         UPDATE_NEEDED=1
     fi
+    
     if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
         log_message "INFO" "Docker and Docker Compose are up to date"
         echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
         echo -e "\n"
-    fi
-    if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
+    else
         echo -e "${magenta}  ✅ Run PRESTO_ENGINE_UPDATE to update Docker/Compose Engine.${no_col}"
         echo -e "\n"
     fi
 }
 
+# Function to print RAM usage bar
 ram_usage_bar() {
     if ! is_command free; then
         log_message "ERROR" "Command 'free' not found, skipping RAM usage"
@@ -638,6 +648,7 @@ raspberry_model=$(cat /proc/device-tree/compatible 2>/dev/null | awk -v RS='\0' 
 # Display system info
 if [ "$show_docker_info" -eq 1 ]; then
     print_docker_status
+    check_docker_updates
 else
     log_message "INFO" "Docker status display skipped as per user preference"
     if [ "$VERBOSE_MODE" -eq 1 ]; then
