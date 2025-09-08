@@ -539,7 +539,7 @@ check_docker_updates() {
         echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
         echo -e "\n"
     else
-        echo -e "${magenta}  ✅ Run 'presto_engine_update' to update Docker/Compose Engine.${no_col}"
+        echo -e "${magenta}  ${INFO} Run 'presto_engine_update' to update Docker/Compose Engine.${no_col}"
         echo -e "     Apt updates slower than github ver.So re-run this later."
         echo -e "     ..if nothing happens today "
         echo -e "\n"
