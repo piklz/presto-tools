@@ -259,6 +259,7 @@ log_message() {
         fi
     fi
 }
+}
 
 # Check disk space before critical operations
 check_disk_space() {
