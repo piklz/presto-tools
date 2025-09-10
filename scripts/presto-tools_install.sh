@@ -171,7 +171,7 @@ else
         log_message "INFO" "PRESTO update is available. Pulling..."
         git pull origin main
         if [ ! -f "$INSTALL_DIR/.outofdate" ]; then
-            whiptail --title "Project update" --msgbox "PRESTO update is available \nYou will not be reminded again until your next update" 8 78
+            whiptail --title "Project update" --msgbox "PRESTO update was available -+ updated! \nYou will not be reminded again until your next update" 8 78
             touch "$INSTALL_DIR/.outofdate"
         fi
     fi
