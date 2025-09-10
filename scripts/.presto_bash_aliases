@@ -16,13 +16,13 @@ alias presto_drive_status="sudo ~/presto-tools/scripts/presto_drive_status.sh"
 alias presto_usb_install="sudo ~/presto-tools/scripts/presto_usb_install.sh"
 alias presto-tools_install='~/presto-tools/scripts/presto-tools_install.sh'
 alias presto-welcome='~/presto-tools/scripts/presto_bashwelcome.sh'
-alias presto-update_full='python3 ~/presto-tools/scripts/presto_update_full.py'
+alias presto_compose_refresh='python3 ~/presto-tools/scripts/presto_compose_refresh.py'
 
 
 # Conditionally include Presto aliases if presto repository is installed
 if [ -d "$HOME/presto" ]; then
     
-    alias presto_launchmenu="~/presto/presto_launch.sh"
+    alias presto-launchmenu="~/presto/presto_launch.sh"
     alias presto_prune_images="~/presto/scripts/prune-images.sh"
     alias presto_prune_volumes="~/presto/scripts/prune-volumes.sh"
     alias presto_docker_monitor="~/presto-tools/scripts/presto_docker_monitor.sh"
