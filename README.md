@@ -17,7 +17,7 @@
         (The actual install script for this kit ) 
  - `presto_bashwelcome.sh` 
         (Gives you nice info on your pi' running state)
- - `presto_update_full.py`  
+ - `presto_compose_refresh.py`  
           automatically one shot updates your whole docker-stacked system 
           with image cleanup at the end for a clean, space saving, smooth docker experience ,
           ie. can be used with a cron job ,for example to execute it every week and update the containers and prune the left over images?
