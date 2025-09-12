@@ -173,9 +173,9 @@ display_logo() {
             echo -e "${cyan}PRESTO${no_col}"
             ;;
         ascii)
-            echo -e "${cyan}  ╔════════╗${no_col}"
-            echo -e "${cyan}  ║ ${white}PRESTO${cyan} ║${no_col}"
-            echo -e "${cyan}  ╚════════╝${no_col}"
+            echo -e "${white}  ┏┓┳┓┏┓┏┓┏┳┓┏┓${no_col}"
+            echo -e "${grey}  ┃┃┣┫┣ ┗┓ ┃ ┃┃${no_col}"
+            echo -e "${grey_dim}  ┣┛┛┗┗┛┗┛ ┻ ┗┛${no_col}"
             ;;
         pixel)
             cat << EOF
