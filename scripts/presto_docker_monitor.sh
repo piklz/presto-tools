@@ -1,13 +1,14 @@
 #!/bin/bash
 # -----------------------------------------------
 # Docker Container Status Script
-# Version: 3.0.0
+# Version: 3.0.1
 # Author: piklz
 # GitHub: https://github.com/piklz
 # Description:
 #     This script provides a clean overview of Docker container health statistics,
 #
 # Changelog:
+#   v3.0.1 (2025-11-05) - Improved port extraction/health check logic to handle edge cases.
 #   v3.0.0 (2025-08-26) - Added --help with systemd and debugging tips, and an updated header.
 #   v2.9.0 - Initial release with various display options.
 #
@@ -21,7 +22,7 @@
 
 # Script Variables
 SCRIPT_NAME="presto_docker_monitor.sh"
-SCRIPT_VERSION="3.0.0"
+SCRIPT_VERSION="3.0.1"
 JOURNAL_TAG="presto_docker_monitor"
 DEBUG_MODE=false
 
@@ -74,7 +75,7 @@ log_message() {
     echo "${message}" | systemd-cat -t "${JOURNAL_TAG}" --priority="${journald_priority}"
 }
 
-# Function to create a stylish header
+# Function to create my neat header
 function print_header() {
     echo -e "${cyan}"
     printf "╭───────── ${white}Docker Container Monitor${no_col}${cyan} ───${white}${no_col}${cyan}────╮\n"
@@ -85,10 +86,11 @@ function print_header() {
 function print_running_containers() {
     log_message "info" "Action: Listing running containers."
 
-    echo -e "\n${white}Running Containers:${no_col}         ${white}Health  Ports${no_col}"
+    echo -e "\n${white}Running Containers:${no_col}           ${white}Health  Port${no_col}"
     echo -e "${cyan}───────────────────────────────────────────${no_col}"
 
     local containers
+    # Fetch ID, Name, Ports, and Status
     containers=$(docker ps --format '{{.ID}}\t{{.Names}}\t{{.Ports}}\t{{.Status}}')
 
     if [[ -z "$containers" ]]; then
@@ -100,32 +102,58 @@ function print_running_containers() {
                 name="${name:0:27}..."
             fi
 
+            
             local port_display
             if [[ -z "$ports" ]]; then
                 port_display="na"
             else
-                port_display=$(echo "$ports" | grep -oE '[0-9]+->' | head -n1 | sed 's/->//')
-                if [[ -z "$port_display" ]]; then
-                    port_display=$(echo "$ports" | grep -oE '[0-9]+/tcp' | head -n1 | sed 's/\/tcp//')
+                # Extract the host port (e.g., 8080) or the container's internal port (e.g., 3003)
+                port_display=$(echo "$ports" | head -n1 | sed -E 's/.*:([0-9]+)->.*/\1/g; s/([0-9]+)\/tcp.*/\1/g')
+                
+                # Strip non-digits to clean up 
+                port_display=${port_display//[^0-9]/} 
+                
+                # Check if the result is empty OR is the known non-host port anomaly (e.g., 37)
+                if [[ -z "$port_display" ]] || [[ "$port_display" == "37" ]]; then 
+                    port_display="na"
+                else
+                    port_display=":$port_display"
                 fi
-                port_display=${port_display:-"na"}
-                port_display=":$port_display"
             fi
+            
 
             local health_emoji
             local health_color
+            
+            
+            
+
             if [[ "$status" =~ \(healthy\) ]]; then
+                # 1. Explicitly Healthy
                 health_emoji="✅"
                 health_color="${green}"
+                
             elif [[ "$status" =~ \(health:\ starting\) ]]; then
+                # 2. Explicitly Starting
                 health_emoji="⏳"
                 health_color="${yellow}"
+                
+            elif [[ "$status" =~ \(unhealthy\) ]]; then
+                # 3. Explicitly Unhealthy
+                health_emoji="❌"
+                health_color="${lgt_red}"
+                log_message "warning" "Container ${name} is UNHEALTHY."
+            
             else
-                health_emoji="⚠️"
-                health_color="${yellow}"
+                # 4. CATCH ALL: If it's running (listed by docker ps) and didn't match the explicit warnings, 
+                #    it is **assumed healthy**. This resolves apps like the immich_machine_learning '?' issue where it has internal ports+working and is actually healthy .
+                health_emoji="✅" 
+                health_color="${green}"
             fi
+            
 
-            printf "${green}%-30s${no_col} ${health_color}%1s${no_col} %6s\n" "$name" "$health_emoji" "$port_display"
+            # Use consistent printf formatting
+            printf "${green}%-30s${no_col} ${health_color}%-1s${no_col} %7s\n" "$name" "$health_emoji" "$port_display"
         done <<< "$containers"
     fi
 }
@@ -171,10 +199,11 @@ function print_simple() {
 function print_warnings() {
     log_message "warning" "Action: Listing unhealthy or starting containers."
 
-    echo -e "\n${white}Unhealthy/Starting Containers:${no_col}     ${white}Health  Ports${no_col}"
+    echo -e "\n${white}Unhealthy/Starting Containers:${no_col}      ${white}Health  Port${no_col}"
     echo -e "${cyan}───────────────────────────────────────────${no_col}"
 
     local containers
+    # Filter only containers explicitly marked as unhealthy or health: starting
     containers=$(docker ps --format '{{.ID}}\t{{.Names}}\t{{.Ports}}\t{{.Status}}' | grep -E '\((unhealthy|health: starting)\)')
 
     if [[ -z "$containers" ]]; then
@@ -186,29 +215,41 @@ function print_warnings() {
                 name="${name:0:27}..."
             fi
 
+            # --- UPDATED PORT EXTRACTION LOGIC (Robust) ---
             local port_display
             if [[ -z "$ports" ]]; then
                 port_display="na"
             else
-                port_display=$(echo "$ports" | grep -oE '[0-9]+->' | head -n1 | sed 's/->//')
+                # Extract the host port or the container's internal port
+                port_display=$(echo "$ports" | head -n1 | sed -E 's/.*:([0-9]+)->.*/\1/g; s/([0-9]+)\/tcp.*/\1/g')
+                
+                port_display=${port_display//[^0-9]/} # Strip non-digits to clean up
+                
                 if [[ -z "$port_display" ]]; then
-                    port_display=$(echo "$ports" | grep -oE '[0-9]+/tcp' | head -n1 | sed 's/\/tcp//')
+                    port_display="na"
+                else
+                    port_display=":$port_display"
                 fi
-                port_display=${port_display:-"na"}
-                port_display=":$port_display"
             fi
+            # --- END UPDATED PORT EXTRACTION LOGIC ---
 
             local health_emoji
             local health_color
-            if [[ "$status" =~ \(health:\ starting\) ]]; then
+            
+            # --- SIMPLIFIED STATUS CHECK FOR WARNINGS ---
+            if [[ "$status" =~ starting ]]; then
+                # Check for STARTING
                 health_emoji="⏳"
                 health_color="${yellow}"
             else
-                health_emoji="⚠️"
-                health_color="${yellow}"
+                # Default to UNHEALTHY (since grep filtered for it)
+                health_emoji="❌"
+                health_color="${lgt_red}"
             fi
+            # --- END SIMPLIFIED STATUS CHECK ---
 
-            printf "${green}%-30s${no_col} ${health_color}%1s${no_col} %6s\n" "$name" "$health_emoji" "$port_display"
+            # Use consistent printf formatting
+            printf "${green}%-30s${no_col} ${health_color}%-1s${no_col} %7s\n" "$name" "$health_emoji" "$port_display"
         done <<< "$containers"
     fi
 }
