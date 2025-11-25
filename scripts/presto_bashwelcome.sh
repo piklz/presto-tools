@@ -13,7 +13,7 @@
 ##################################################################################################
 #-------------------------------------------------------------------------------------------------
 # presto-tools Welcome Script
-# Version: 1.0.9
+# Version: 1.1.0
 # Author: piklz
 # GitHub: https://github.com/piklz/presto-tools.git
 # Description:
@@ -22,6 +22,8 @@
 #   managed by journald (compatible with future log2ram integration).
 #
 # Changelog:
+#   Version 1.1.0 (2025-11-25)
+#     - fixed docker git tag fomrat changed ,Added check for jq command in Docker version check to improve JSON parsing.
 #   Version 1.0.9 (2024-06-10):
 #     -fixed output alignment on docker status stats
 #   Version 1.0.8 (2025-09-02):
@@ -46,7 +48,7 @@
 # Global variables and defaults (overridden by presto_config.local 
 # ie. just cp presto_config.defaults in scripts folder to presto_config.local and edit that one)
 
-script_VERSION='1.0.9'
+script_VERSION='1.1.0'
 VERBOSE_MODE=0  # Default to prevent integer expression error
 LOGO_STYLE="colorbars"  # Default logo style
 
