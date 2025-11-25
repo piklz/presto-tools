@@ -487,13 +487,20 @@ check_docker_updates() {
     
     # Docker Compose version check
     CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2- || echo "N/A")
-    LATEST_COMPOSE_TAG=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
+    LATEST_COMPOSE_VERSION=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 | sed 's/^v//')
     LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
 
     # Docker Engine version check
     CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d '-' -f 1 || echo "N/A")
-    LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
-    LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#v}"
+
+    if is_command jq; then
+        LATEST_DOCKER_VERSION=$(curl -s https://api.github.com/repos/moby/moby/releases/latest | jq -r '.tag_name | ltrimstr("v") | ltrimstr("docker-")')
+    else
+        LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
+        LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#docker-}"
+        LATEST_DOCKER_VERSION="${LATEST_DOCKER_VERSION#v}"
+    fi
+    [ "$LATEST_DOCKER_VERSION" = "null" ] && LATEST_DOCKER_VERSION="N/A"
 
     # Compare versions using a robust awk function
     compare_versions() {
