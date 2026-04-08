@@ -637,11 +637,23 @@ print_pi_drive_info() {
 # Trap errors (log but don't disrupt login)
 trap 'log_message "ERROR" "Error occurred at line $LINENO: exit code $?"' ERR
 
+
+
 # System info variables
 cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "0")
 gpu_temp=$(vcgencmd measure_temp 2>/dev/null | awk '{split($0,numbers,"=")} {print numbers[2]}' || echo "N/A")
 internal_ip=$(hostname -I 2>/dev/null | awk '{print $1, $2, $3}' || echo "N/A")
-external_ip=$(curl -s https://ipv4.icanhazip.com 2>/dev/null || echo "N/A")
+#Fetch IPv4 (forced with -4) icanhazip failing now.. using ifconfig.me instead which seems more reliable for some reason
+# Fetch IPv4 - Try ifconfig, then ident
+ip4=$(curl -s -4 https://ifconfig.me || curl -s -4 https://ident.me)
+# Fetch IPv6 - Try ifconfig, then ident
+ip6=$(curl -s -6 https://ifconfig.me || curl -s -6 https://ident.me)
+# Combine results
+external_ip=$(echo "${ip4:-} ${ip6:-}" | xargs)
+#Final check: If both failed, set to N/A
+external_ip=${external_ip:-"N/A"}
+#show ipv4/6 external here
+external_ip=${external_ip:-"N/A"}
 timezone=$(timedatectl 2>/dev/null | grep "Time zone" | awk '{print $3$4$5}' || echo "UTC")
 date_full=$(date +"%A, %d %B %Y,%H:%M:%S $timezone" 2>/dev/null || echo "N/A")
 os=$(lsb_release -d -r -c 2>/dev/null | awk -F: '{split($2,a," "); printf a[1]" "  }'; uname -s -m || echo "N/A")
