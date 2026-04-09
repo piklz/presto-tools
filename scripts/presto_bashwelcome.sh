@@ -468,7 +468,7 @@ print_docker_status() {
     fi
     
     # Call the new function to check for updates
-    check_docker_updates
+    check_docker_updates --check
 }
 
 
@@ -476,82 +476,18 @@ print_docker_status() {
 # Function: check_docker_updates
 # Purpose: Checks and displays the status of Docker and Docker Compose versions.
 # Parameters: None.
+
 check_docker_updates() {
-    log_message "INFO" "Checking Docker and Compose versions"
+    local script_path="$USER_HOME/presto-tools/scripts/presto_docker-engine_update.sh"
 
-    # Check for network connectivity by attempting to reach GitHub API
-    if ! timeout 2 curl -s "https://api.github.com/repos/docker/compose/releases/latest" >/dev/null 2>&1; then
-        log_message "WARNING" "GitHub API unavailable, skipping version check"
-        echo -e "${red}  Docker (apt) ver checker down right now .. continue${no_col}"
-        echo -e "\n"
-        return 0
-    fi
-    
-    # Docker Compose version check
-    CURRENT_COMPOSE_VERSION=$(docker compose version 2>/dev/null | grep "Docker Compose version" | awk '{print $4}' | cut -c 2- || echo "N/A")
-    LATEST_COMPOSE_VERSION=$(curl -s "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 | sed 's/^v//')
-    LATEST_COMPOSE_VERSION="${LATEST_COMPOSE_TAG#v}"
+    if [[ -f "$script_path" ]]; then
+        # Check if it's executable, if not, fix it
+        [[ -x "$script_path" ]] || chmod +x "$script_path"
 
-    # Docker Engine version check
-    CURRENT_DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d '-' -f 1 || echo "N/A")
-
-    if is_command jq; then
-        LATEST_DOCKER_VERSION=$(curl -s https://api.github.com/repos/moby/moby/releases/latest | jq -r '.tag_name | ltrimstr("v") | ltrimstr("docker-")')
+        # Pass any arguments ($@) to the script (like --check)
+        bash "$script_path" "$@"
     else
-        LATEST_DOCKER_TAG=$(curl -s "https://api.github.com/repos/moby/moby/releases/latest" | grep '"tag_name":' | cut -d '"' -f 4 || echo "N/A")
-        LATEST_DOCKER_VERSION="${LATEST_DOCKER_TAG#docker-}"
-        LATEST_DOCKER_VERSION="${LATEST_DOCKER_VERSION#v}"
-    fi
-    [ "$LATEST_DOCKER_VERSION" = "null" ] && LATEST_DOCKER_VERSION="N/A"
-
-    # Compare versions using a robust awk function
-    compare_versions() {
-        local current="$1" latest="$2"
-        if [[ "$current" == "N/A" || "$latest" == "N/A" ]]; then
-            echo "unknown"
-            return
-        fi
-        awk -v current="$current" -v latest="$latest" '
-        BEGIN {
-            split(current, cur_parts, ".")
-            split(latest, lat_parts, ".")
-            len = length(cur_parts) > length(lat_parts) ? length(cur_parts) : length(lat_parts)
-            for (i = 1; i <= len; i++) {
-                cur_part = (cur_parts[i] == "" ? 0 : cur_parts[i])
-                lat_part = (lat_parts[i] == "" ? 0 : lat_parts[i])
-                if (cur_part < lat_part) { print "newer"; exit }
-                if (cur_part > lat_part) { print "older"; exit }
-            }
-            print "equal"
-        }'
-    }
-
-    COMPOSE_UPDATE=$(compare_versions "$CURRENT_COMPOSE_VERSION" "$LATEST_COMPOSE_VERSION")
-    DOCKER_UPDATE=$(compare_versions "$CURRENT_DOCKER_VERSION" "$LATEST_DOCKER_VERSION")
-
-    UPDATE_NEEDED=0
-    
-    if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
-        log_message "INFO" "Newer Docker Compose version available: v$LATEST_COMPOSE_VERSION"
-        echo -e "${yellow}  ✅ A newer version of Docker Compose is available (v$LATEST_COMPOSE_VERSION).${no_col}"
-        UPDATE_NEEDED=1
-    fi
-    
-    if [[ "$DOCKER_UPDATE" == "newer" ]]; then
-        log_message "INFO" "Newer Docker Engine version available: v$LATEST_DOCKER_VERSION"
-        echo -e "${yellow}  ✅ A newer version of Docker Engine is available (v$LATEST_DOCKER_VERSION).${no_col}"
-        UPDATE_NEEDED=1
-    fi
-    
-    if [[ "$UPDATE_NEEDED" -eq 0 ]]; then
-        log_message "INFO" "Docker and Docker Compose are up to date"
-        echo -e "${green}  ✅ Docker and Docker Compose are up to date 🐋.${no_col}"
-        echo -e "\n"
-    else
-        echo -e "${magenta}  ${INFO} Run 'presto_engine_update' to update Docker/Compose Engine.${no_col}"
-        echo -e "     Apt updates slower than github ver.So re-run this later."
-        echo -e "     ..if nothing happens today "
-        echo -e "\n"
+        echo -e "\e[31m❌ Error: Presto Update script not found at $script_path\e[0m"
     fi
 }
 

@@ -15,7 +15,7 @@
 # Description: Docker engine /compose version checker and updater via apt manager
 # Version: 1.0.4
 
-# Last Updated: 08/04/2026
+# Last Updated: 09/04/2026
 # change log:
 #  - v1.0.4 - 09/04/2026  :added checks for additional  ssl securty files checks needed even when 
 #             docker is already updated warns user to upgrade as well as a final "check complete" message to confirm the script ran to the end
@@ -29,6 +29,9 @@ red="\e[31m"
 yellow="\e[33m"
 no_col="\e[0m"
 
+
+#capture arg for -check
+MODE=$1
 
 # Ensure dependencies for the script itself exist in case of mint ,uduntu minimal etc
 for pkg in curl grep awk; do
@@ -126,49 +129,47 @@ fi
 
 # ---- Updating tests ----
 if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
-  # ONLY ask if an update is actually needed
-  echo -e "${yellow}Do you want to update Docker and/or Docker Compose now? (y/N)${no_col}"
-  read -r REPLY
-  if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
-    echo -e "${red}🚫 Update canceled.${no_col}"
-    # We don't exit here, so it can still check system deps
+  if [[ "$MODE" == "--check" ]]; then
+    # LOGIN MODE: Just a hint, no halting.
+    echo -e "${blue}👉 To apply these updates, run: ${yellow}presto_engine_update${no_col}"
   else
-    # ---- Updating Logic ----
-    if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
-      echo -e "${yellow}🔄 Updating Docker Compose to v$LATEST_COMPOSE_VERSION...${no_col}"
-      sudo apt-get install -y docker-compose-plugin
-      echo -e "${green}✅ Docker Compose updated successfully.${no_col}"
-    fi
+    # MANUAL MODE: The interactive part
+    echo -e "${yellow}Do you want to update Docker and/or Docker Compose now? (y/N)${no_col}"
+    read -r REPLY
+    if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
+      echo -e "${red}🚫 Update canceled.${no_col}"
+    else
+      # ---- Updating Logic ----
+      if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
+        echo -e "${yellow}🔄 Updating Docker Compose to v$LATEST_COMPOSE_VERSION...${no_col}"
+        # We check if apt actually does something
+        sudo apt-get install -y docker-compose-plugin && echo -e "${green}✅ Docker Compose task finished.${no_col}"
+      fi
 
-    if [[ "$DOCKER_UPDATE" == "newer" ]]; then
-      echo -e "${yellow}🔄 Updating Docker Engine to v$LATEST_DOCKER_VERSION...${no_col}"
-      sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-      echo -e "${green}✅ Docker Engine updated successfully.${no_col}"
-      echo -e "${yellow}🔄 Restarting Docker service...${no_col}"
-      sudo systemctl restart docker
-      echo -e "${green}✅ Docker service restarted successfully.${no_col}"
+      if [[ "$DOCKER_UPDATE" == "newer" ]]; then
+        echo -e "${yellow}🔄 Updating Docker Engine to v$LATEST_DOCKER_VERSION...${no_col}"
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+        echo -e "${green}✅ Docker Engine task finished.${no_col}"
+        echo -e "${yellow}🔄 Restarting Docker service...${no_col}"
+        sudo systemctl restart docker
+        echo -e "${green}✅ Docker service restarted successfully.${no_col}"
+      fi
     fi
   fi
 else
-  # If no Docker updates are found, tell the user clearly
-  echo -e "${green}✅ Docker and Docker Compose versions are already up to date.${no_col}"
+  # Quiet on login, talkative on manual check
+  if [[ "$MODE" != "--check" ]]; then
+     echo -e "${green}✅ Docker and Docker Compose versions are already up to date.${no_col}"
+  fi
 fi
 
+# ---- Advanced System Check (ALWAYS runs) ----
+# This detects the SSL/Security stuff regardless of Docker version
+CORE_DEPS=$(apt-get --simulate upgrade 2>/dev/null | grep -E "inst (libssl|openssl|libtiff|libc6|ca-certificates|libseccomp2)")
 
-# ---- Advanced System Check ----
-# Silent check for dependencies
-CORE_DEPS=$(apt-get --simulate upgrade 2>/dev/null | grep -E "inst (libssl|openssl|libtiff|libc6|ca-certificates|libseccomp2|libsystemd0|iptables|nftables|zlib1g)")
-#CORE_DEPS="inst libssl3 (3.0.19-1 [DEBUG TEST])"  #debug values
-# ---- FINAL OUTPUT LOGIC ----
-if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
-    # We already showed the version alerts above, so just add a finish line
-    echo -e "\n${green}🎉 Check completed!${no_col}"
-elif [[ -n "$CORE_DEPS" ]]; then
-    # Only show if there's an SSL/Security issue
-    echo -e "${yellow}🔔 NOTE: Docker is current, but security dependencies (SSL/System) have updates.${no_col}"
-    echo -e "${blue}Run 'sudo apt upgrade' to apply these security patches.${no_col}"
-    echo -e "\n${green}🎉 Check completed!${no_col}"
-else
-    # If EVERYTHING is up to date, the script says nowt.
-    exit 0
+if [[ -n "$CORE_DEPS" ]]; then
+    echo -e "${yellow}⚠️  SECURITY ALERT: System libraries (SSL/Core) have updates.${no_col}"
+    echo -e "${blue}👉 Run 'sudo apt upgrade' to fix these dependencies.${no_col}"
+elif [[ "$MODE" != "--check" ]]; then
+    echo -e "${green}✅ All underlying system libraries are current.${no_col}"
 fi
