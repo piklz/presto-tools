@@ -159,7 +159,7 @@ if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
 else
   # Quiet on login, talkative on manual check
   if [[ "$MODE" != "--check" ]]; then
-     echo -e "${green}✅ Docker and Docker Compose versions are already up to date.${no_col}"
+     echo -e "${green}✅ Docker and Docker Compose versions are already up to date.🐋${no_col}"
   fi
 fi
 
