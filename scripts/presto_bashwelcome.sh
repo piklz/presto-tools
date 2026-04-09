@@ -12,8 +12,8 @@
 
 ##################################################################################################
 #-------------------------------------------------------------------------------------------------
-# presto-tools Welcome Script
-# Version: 1.1.0
+# presto-tools bash Welcome Script
+# Version: 1.1.1
 # Author: piklz
 # GitHub: https://github.com/piklz/presto-tools.git
 # Description:
@@ -22,6 +22,8 @@
 #   managed by journald (compatible with future log2ram integration).
 #
 # Changelog:
+#   Version 1.1.1 (2026-04-09): 
+#     - Added network information with external IP and ISP details, and enhanced error handling for network requests.
 #   Version 1.1.0 (2025-11-25)
 #     - fixed docker git tag fomrat changed ,Added check for jq command in Docker version check to improve JSON parsing.
 #   Version 1.0.9 (2024-06-10):
@@ -30,8 +32,6 @@
 #     - Added VERBOSE_MODE check to suppress non-critical messages in non-verbose mode (show_info dim grey parts...)
 #   Version 1.0.7 (2025-09-02):
 #     - Added 'pixel' logo style and --help option
-#   Version 1.0.6 (2025-09-02):
-#     - Fixed syntax error in SUDO_USER check and removed erroneous System: line
 #
 # Usage:
 #   Run the script directly: `bash presto_bashwelcome.sh [-logo {colorbars|simple|ascii|pixel}] [--help]`
@@ -639,21 +639,40 @@ trap 'log_message "ERROR" "Error occurred at line $LINENO: exit code $?"' ERR
 
 
 
-# System info variables
+# SYSTEM INFO VARIABLES 
 cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "0")
 gpu_temp=$(vcgencmd measure_temp 2>/dev/null | awk '{split($0,numbers,"=")} {print numbers[2]}' || echo "N/A")
-internal_ip=$(hostname -I 2>/dev/null | awk '{print $1, $2, $3}' || echo "N/A")
-#Fetch IPv4 (forced with -4) icanhazip failing now.. using ifconfig.me instead which seems more reliable for some reason
-# Fetch IPv4 - Try ifconfig, then ident
-ip4=$(curl -s -4 https://ifconfig.me || curl -s -4 https://ident.me)
-# Fetch IPv6 - Try ifconfig, then ident
-ip6=$(curl -s -6 https://ifconfig.me || curl -s -6 https://ident.me)
-# Combine results
-external_ip=$(echo "${ip4:-} ${ip6:-}" | xargs)
-#Final check: If both failed, set to N/A
-external_ip=${external_ip:-"N/A"}
-#show ipv4/6 external here
-external_ip=${external_ip:-"N/A"}
+#FETCH INTERNAL IPs
+internal_ip=$(ip -o -4 addr show | awk '
+    $2 != "lo" && $2 !~ /veth/ {
+        name=$2;
+        if (name ~ /docker/) name="docker";
+        if (name ~ /br-/) name="bridge";
+        if (name ~ /eth|enp|eno/) name="local";
+        if (name ~ /wlan|wlp/) name="wifi";
+        split($4, ip, "/");
+        printf "[%s] %s | ", name, ip[1]
+    }' | sed 's/ | $//')
+
+gw=$(ip route | grep default | awk '{print $3}' | head -n 1)
+internal_ip="${internal_ip:-N/A} | [gw] ${gw:-N/A}"
+
+#FETCH EXTERNAL IPS DATA WITH ISP INFO AS WELL
+# We pull the raw JSON text from the API
+geo_raw=$(curl -s --connect-timeout 2 http://ip-api.com/json/)
+
+#PARSE JSON DATA USING SED (since we want to avoid jq dependency for now)
+isp=$(echo "$geo_raw" | sed -n 's/.*"isp":"\([^"]*\)".*/\1/p')
+city=$(echo "$geo_raw" | sed -n 's/.*"city":"\([^"]*\)".*/\1/p')
+country=$(echo "$geo_raw" | sed -n 's/.*"countryCode":"\([^"]*\)".*/\1/p')
+
+#FETCH EXTERNAL IPs
+ip4=$(curl -s -4 --connect-timeout 2 https://ifconfig.me || echo "N/A")
+ip6=$(curl -s -6 --connect-timeout 2 https://ifconfig.me || echo "N/A")
+
+# OUTPUT
+external_ip="[IPv4] $ip4 / [IPv6] $ip6"
+
 timezone=$(timedatectl 2>/dev/null | grep "Time zone" | awk '{print $3$4$5}' || echo "UTC")
 date_full=$(date +"%A, %d %B %Y,%H:%M:%S $timezone" 2>/dev/null || echo "N/A")
 os=$(lsb_release -d -r -c 2>/dev/null | awk -F: '{split($2,a," "); printf a[1]" "  }'; uname -s -m || echo "N/A")
@@ -743,8 +762,11 @@ else
     printf "  %-3s ${cyan}%-13s${no_col} ${red}%s\n" "${gpu}" "GPU Temp:" "$gpu_temp"
 fi
 
-printf "  %-3s ${blue}%-13s${no_col} ${blue}${no_col}%s\n" "${house}" "Internal IP:" "$internal_ip"
-printf "  %-3s ${magenta_dim}%-13s${no_col} %s\n" "${globe}" "External IP:" "$external_ip"
+printf "  %-3s ${blue}%-13s${no_col} ${cyan}%s${no_col}\n" "${house}" "Internal IP:" "$internal_ip"
+printf "  %-3s ${magenta_dim}%-13s${no_col} ${magenta}%s${no_col}\n" \
+    "${globe}" "External IP:" "$external_ip"
+printf " %-3s %-13s ${magenta_dim}[%s - %s, %s]${no_col}\n" \
+    "" "" "${isp:-Unknown}" "${city:-Unknown}" "${country:-XX}"
 printf "  %-3s ${yellow}%-15s${no_col} ${yellow}%s\n" "${clock}" "Uptime┐" "$uptime"
 printf "  %-3s ${yellow}%-13s${no_col} %s\n" "${timer}" "  Processes:" "$running_processes"
 printf "  %-3s ${green}%-13s${no_col} %s\n" "${ram}" "  RAM Usage:" "$memory_usage"
