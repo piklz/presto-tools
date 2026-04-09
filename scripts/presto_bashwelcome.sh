@@ -639,17 +639,18 @@ trap 'log_message "ERROR" "Error occurred at line $LINENO: exit code $?"' ERR
 
 
 
-# SYSTEM INFO VARIABLES 
+# SYSTEM INFO VARIABLES FETCHING
 cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "0")
 gpu_temp=$(vcgencmd measure_temp 2>/dev/null | awk '{split($0,numbers,"=")} {print numbers[2]}' || echo "N/A")
-#FETCH INTERNAL IPs
 internal_ip=$(ip -o -4 addr show | awk '
     $2 != "lo" && $2 !~ /veth/ {
         name=$2;
         if (name ~ /docker/) name="docker";
         if (name ~ /br-/) name="bridge";
-        if (name ~ /eth|enp|eno/) name="local";
+        if (name ~ /eth|enp|eno|end/) name="local";
         if (name ~ /wlan|wlp/) name="wifi";
+        if (name ~ /wg/) name="wireguard";
+        if (name ~ /tailscale/) name="tailscale";
         split($4, ip, "/");
         printf "[%s] %s | ", name, ip[1]
     }' | sed 's/ | $//')
@@ -657,21 +658,24 @@ internal_ip=$(ip -o -4 addr show | awk '
 gw=$(ip route | grep default | awk '{print $3}' | head -n 1)
 internal_ip="${internal_ip:-N/A} | [gw] ${gw:-N/A}"
 
-#FETCH EXTERNAL IPS DATA WITH ISP INFO AS WELL
-# We pull the raw JSON text from the API
-geo_raw=$(curl -s --connect-timeout 2 http://ip-api.com/json/)
+#FETCH EXTERNAL DATA (Using the HTTPS source that worked)
+geo_raw=$(curl -s --connect-timeout 2 https://ifconfig.co/json | tr -d '\n' )
 
-#PARSE JSON DATA USING SED (since we want to avoid jq dependency for now)
-isp=$(echo "$geo_raw" | sed -n 's/.*"isp":"\([^"]*\)".*/\1/p')
-city=$(echo "$geo_raw" | sed -n 's/.*"city":"\([^"]*\)".*/\1/p')
-country=$(echo "$geo_raw" | sed -n 's/.*"countryCode":"\([^"]*\)".*/\1/p')
+#EXTRACT ISP, city, and country 
+isp=$(echo "$geo_raw" | grep -oP '"asn_org":\s*"\K[^"]+' || echo "Unknown")
+city=$(echo "$geo_raw" | grep -oP '"city":\s*"\K[^"]+' || echo "Unknown")
+country=$(echo "$geo_raw" | grep -oP '"country_iso":\s*"\K[^"]+' || echo "XX")
 
 #FETCH EXTERNAL IPs
 ip4=$(curl -s -4 --connect-timeout 2 https://ifconfig.me || echo "N/A")
-ip6=$(curl -s -6 --connect-timeout 2 https://ifconfig.me || echo "N/A")
+ip6=$(curl -s -6 --connect-timeout 2 https://ifconfig.me || echo "")
 
-# OUTPUT
-external_ip="[IPv4] $ip4 / [IPv6] $ip6"
+#OUTPUT
+if [[ -z "$ip6" ]]; then
+    external_ip="[IPv4] $ip4"
+else
+    external_ip="[IPv4] $ip4 / [IPv6] $ip6"
+fi
 
 timezone=$(timedatectl 2>/dev/null | grep "Time zone" | awk '{print $3$4$5}' || echo "UTC")
 date_full=$(date +"%A, %d %B %Y,%H:%M:%S $timezone" 2>/dev/null || echo "N/A")
