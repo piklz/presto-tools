@@ -364,19 +364,20 @@ if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
     else
         if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
             echo -e "${yellow}🔄 Updating Docker Compose to v${LATEST_COMPOSE}...${no_col}"
-            sudo apt install -y --with-new-pkgs docker-compose-plugin \
+            sudo apt install -y docker-compose-plugin \
                 && echo -e "${green}✅ Docker Compose updated.${no_col}" \
-                || echo -e "${red}❌ Docker Compose update failed. Check apt logs.${no_col}"
+                || echo -e "${red}❌ Docker Compose update failed.${no_col}"
         fi
+
         if [[ "$DOCKER_UPDATE" == "newer" ]]; then
-            echo -e "${yellow}🔄 Updating Docker Engine to v${LATEST_DOCKER}...${no_col}"
-            sudo apt install -y --with-new-pkgs docker-ce docker-ce-cli containerd.io \
+            echo -e "${yellow}🔄 Updating Docker Engine & Containerd...${no_col}"
+            sudo apt install -y docker-ce docker-ce-cli containerd.io \
                 && echo -e "${green}✅ Docker Engine updated.${no_col}" \
-                || echo -e "${red}❌ Docker Engine update failed. Check apt logs.${no_col}"
+                || echo -e "${red}❌ Docker Engine update failed.${no_col}"
+            
             echo -e "${yellow}🔄 Restarting Docker service...${no_col}"
             sudo systemctl restart docker \
-                && echo -e "${green}✅ Docker service restarted.${no_col}" \
-                || echo -e "${red}❌ Restart failed. Try: sudo systemctl restart docker${no_col}"
+                && echo -e "${green}✅ Docker service restarted.${no_col}"
         fi
         # Bust cache so next login reflects the freshly installed versions
         rm -f "$DOCKER_VER_FILE" "$COMPOSE_VER_FILE" \
