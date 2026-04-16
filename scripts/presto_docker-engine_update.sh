@@ -323,7 +323,7 @@ fi
 # ═══════════════════════════════════════════════════════
 
 echo -ne "${yellow}🔄 Synchronising with package repositories...${no_col}"
-sudo apt update -qq 2>/dev/null
+sudo apt update -qq -o APT::Get::Show-Upgradable=0 2>/dev/null
 echo -ne "\r\033[K"
 
 echo -ne "${yellow}🔍 Checking upstream versions...${no_col}"
