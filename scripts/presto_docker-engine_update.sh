@@ -18,7 +18,7 @@
 # Changelog:
 #  - v1.2.0 - 11/04/2026  : Introduced TTL-based offline-first caching for --check (login) mode.
 #             Cache is read instantly from disk; stale cache triggers a fully detached background
-#             refresh so login never blocks on network. apt-get update and apt simulate are also
+#             refresh so login never blocks on network. apt update and apt simulate are also
 #             TTL-gated and run in the background, never on the login path. Manual mode always
 #             fetches live. Added CACHE_MAX_AGE_HOURS tunable.
 #  - v1.1.0 - 11/04/2026  : Fixed CORE_DEPS grep (case mismatch), added ETag caching, set -uo
@@ -217,8 +217,8 @@ echo "[$(date)] Starting background refresh"
 fetch_latest_github_tag "moby/moby"        "\$DOCKER_VER_FILE"  "\$DOCKER_ETAG_FILE"  >/dev/null
 fetch_latest_github_tag "docker/compose" "\$COMPOSE_VER_FILE" "\$COMPOSE_ETAG_FILE" >/dev/null
 
-sudo apt-get update -qq 2>/dev/null
-apt-get --simulate upgrade 2>/dev/null \
+sudo apt update -qq 2>/dev/null
+apt --simulate upgrade 2>/dev/null \
     | grep -E '^Inst (libssl|openssl|libtiff|libc6|ca-certificates|libseccomp2)' \
     | awk '{print \$2}' > "\$APT_ALERTS_FILE"
 touch "\$LAST_APT_SYNC"
@@ -240,7 +240,7 @@ BGSCRIPT
 for pkg in curl grep awk; do
     if ! command -v "$pkg" &>/dev/null; then
         [[ "$MODE" != "--check" ]] && echo -e "${yellow}📦 Installing missing dependency: $pkg${no_col}"
-        sudo apt-get install -y "$pkg" >/dev/null 2>&1
+        sudo apt install -y "$pkg" >/dev/null 2>&1
     fi
 done
 
@@ -323,7 +323,7 @@ fi
 # ═══════════════════════════════════════════════════════
 
 echo -ne "${yellow}🔄 Synchronising with package repositories...${no_col}"
-sudo apt-get update -qq 2>/dev/null
+sudo apt update -qq 2>/dev/null
 echo -ne "\r\033[K"
 
 echo -ne "${yellow}🔍 Checking upstream versions...${no_col}"
@@ -364,13 +364,13 @@ if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
     else
         if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
             echo -e "${yellow}🔄 Updating Docker Compose to v${LATEST_COMPOSE}...${no_col}"
-            sudo apt-get install -y --with-new-pkgs docker-compose-plugin \
+            sudo apt install -y --with-new-pkgs docker-compose-plugin \
                 && echo -e "${green}✅ Docker Compose updated.${no_col}" \
                 || echo -e "${red}❌ Docker Compose update failed. Check apt logs.${no_col}"
         fi
         if [[ "$DOCKER_UPDATE" == "newer" ]]; then
             echo -e "${yellow}🔄 Updating Docker Engine to v${LATEST_DOCKER}...${no_col}"
-            sudo apt-get install -y --with-new-pkgs docker-ce docker-ce-cli containerd.io \
+            sudo apt install -y --with-new-pkgs docker-ce docker-ce-cli containerd.io \
                 && echo -e "${green}✅ Docker Engine updated.${no_col}" \
                 || echo -e "${red}❌ Docker Engine update failed. Check apt logs.${no_col}"
             echo -e "${yellow}🔄 Restarting Docker service...${no_col}"
@@ -388,7 +388,7 @@ else
 fi
 
 # ---- Live security / SSL library check ----
-CORE_DEPS=$(apt-get --simulate upgrade 2>/dev/null \
+CORE_DEPS=$(apt --simulate upgrade 2>/dev/null \
     | grep -E '^Inst (libssl|openssl|libtiff|libc6|ca-certificates|libseccomp2)' \
     | awk '{print $2}')
 
