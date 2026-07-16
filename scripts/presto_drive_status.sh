@@ -12,7 +12,7 @@
 
 #-------------------------------------------------------------------------------------------------
 # presto_drive_status.sh - Monitor disk health and usage on Linux systems
-# Version: 1.0.5
+# Version: 1.0.6
 # Author: piklz
 # GitHub: https://github.com/piklz/presto-tools.git
 # Web: https://github.com/piklz/presto-tools.git
@@ -21,6 +21,22 @@
 #   Customizable via a configuration file. Logs to systemd-journald, with rotation managed by journald.
 #
 # Changelog:
+#   Version 1.0.6 (2026-07-16):
+#     - Fixed drive detection to filter on lsblk's TYPE column (disk/part) instead
+#       of matching device name patterns (sd*/nvme*) — the old pattern silently
+#       excluded mmcblk (Raspberry Pi SD card / eMMC) and would've excluded any
+#       future naming scheme (vd*, xvd*, etc) too. Confirmed portable to
+#       Ubuntu/Mint/Debian, where device naming varies further.
+#     - Extended the same filter to also surface lvm/crypt/raid* leaf devices
+#       (LVM logical volumes, LUKS-encrypted volumes, mdadm arrays), which
+#       were previously invisible entirely on distros that use them.
+#     - Added _resolve_root_disk(): SMART-status parent lookup now walks the
+#       full dependency chain (disk -> part -> crypt -> lvm) instead of
+#       assuming a single hop, so SMART status attributes correctly even
+#       through LVM/LUKS layering.
+#     - get_smart_status() now reads SMART_DEVICE_TYPES from config instead
+#       of a hardcoded local list, and the shipped default now includes
+#       'nvme' (was missing, so NVMe drives always showed unknown status).
 #   Version 1.0.5 (2025-08-21):
 #     - Removed unused file-based logging variables (LOG_DIR, LOG_FILE), directory/file creation code, and LOG_RETENTION_DAYS from configuration.
 #   Version 1.0.4 (2025-08-21):
@@ -40,9 +56,10 @@
 #-------------------------------------------------------------------------------------------------
 
 # Set default variables
-presto_VERSION='1.0.5'
+presto_VERSION='1.0.6'
 VERBOSE_MODE=0
 DEFAULT_OUTPUT_MODE="simple_full"
+
 
 # Color variables (aligned with presto_bashwelcome.sh)
 no_col="\e[0m"
@@ -153,7 +170,7 @@ VERBOSE_MODE=0
 log_level="INFO"
 CHECK_DISK_SPACE=1
 WEATHER_LOCATION="London"
-SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"
+SMART_DEVICE_TYPES="ata,scsi,sat,usbsg,nvme"
 DEFAULT_OUTPUT_MODE="simple_full"
 EOF
     chown "$USER:$USER" "$DEFAULT_CONFIG" 2>/dev/null || true
@@ -269,8 +286,12 @@ done
 get_smart_status() {
     local device_path=$1
     local status_emoji="❓"
-    local device_types=("ata" "scsi" "sat" "usbsg")
-    
+    # Was a hardcoded local list that silently ignored SMART_DEVICE_TYPES from
+    # config (and never included 'nvme'). Now actually reads the config value.
+    local types_csv="${SMART_DEVICE_TYPES:-ata,scsi,sat,usbsg,nvme}"
+    local -a device_types
+    IFS=',' read -ra device_types <<< "$types_csv"
+
     for type in "${device_types[@]}"; do
         log_message "INFO" "Checking SMART status for $device_path with device type $type"
         local smart_output
@@ -291,6 +312,21 @@ get_smart_status() {
     echo "$status_emoji"
 }
 
+# Walk up lsblk's PKNAME chain to the root physical disk. A plain sd*/nvme*
+# partition is one hop (part -> disk), but LVM/LUKS/RAID stack multiple
+# block-device layers (e.g. disk -> part -> crypt -> lvm) — looking up SMART
+# status by the immediate PKNAME alone only works for the simple case and
+# silently finds nothing under those layers. Idempotent for the simple case:
+# a top-level disk has no PKNAME, so the loop exits on the first iteration.
+_resolve_root_disk() {
+    local dev="${1#/dev/}" parent
+    while true; do
+        parent=$(lsblk -n -o PKNAME "/dev/$dev" 2>/dev/null | head -1 | xargs)
+        [ -z "$parent" ] && { echo "$dev"; return; }
+        dev="$parent"
+    done
+}
+
 # Function to truncate a long label with an ellipsis
 truncate_label() {
     local label="$1"
@@ -309,7 +345,7 @@ display_full_report() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating full report"
     declare -A smart_statuses
-    local drives=$(lsblk -d -n -o KNAME 2>/dev/null | grep -E 'sd[a-z]|nvme' || echo "")
+    local drives=$(lsblk -d -n -o KNAME,TYPE 2>/dev/null | awk '$2=="disk"{print $1}' || echo "")
     if [ -z "$drives" ]; then
         log_message "ERROR" "No drives found"
         echo -e "${yellow}No drives found${no_col}"
@@ -324,13 +360,14 @@ display_full_report() {
     local current_parent_disk=""
 
     while read -r kname pkname mountpoint label; do
-        if [ "$pkname" != "$current_parent_disk" ]; then
+        local root_disk; root_disk=$(_resolve_root_disk "$pkname")
+        if [ "$root_disk" != "$current_parent_disk" ]; then
             if [ -n "$current_parent_disk" ]; then
                 echo "│"
             fi
-            current_parent_disk="$pkname"
-            local status_emoji="${smart_statuses[$pkname]}"
-            echo -e "│ [$(printf "%-3s" "$pkname")]-Status: $status_emoji"
+            current_parent_disk="$root_disk"
+            local status_emoji="${smart_statuses[$root_disk]}"
+            echo -e "│ [$(printf "%-3s" "$root_disk")]-Status: $status_emoji"
         fi
 
         if [ -z "$mountpoint" ] && [ "$CHECK_ALL_PARTITIONS" != "true" ]; then
@@ -368,7 +405,7 @@ display_full_report() {
         fi
 
         echo -e "│   $(printf "%-18s" "(${kname: -1}) $output_label") Used: ${bar_color}[${bar_text}]${usage_percent}%${no_col} ($(printf "%s" "$total_size"))"
-    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL 2>/dev/null | grep -E 'sd[a-z][0-9]|nvme' || echo "")
+    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL,TYPE 2>/dev/null | awk '$5 ~ /^(part|lvm|crypt|raid[0-9]*|mpath)$/{print $1,$2,$3,$4}' || echo "")
     echo "╰─────────────────────────────────────────────────────╯"
 }
 
@@ -376,7 +413,7 @@ display_simple_full_report() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating simple full report"
     declare -A smart_statuses
-    local drives=$(lsblk -d -n -o KNAME 2>/dev/null | grep -E 'sd[a-z]|nvme' || echo "")
+    local drives=$(lsblk -d -n -o KNAME,TYPE 2>/dev/null | awk '$2=="disk"{print $1}' || echo "")
     if [ -z "$drives" ]; then
         log_message "ERROR" "No drives found"
         echo -e "${yellow}No drives found${no_col}"
@@ -424,11 +461,11 @@ display_simple_full_report() {
             output_label="$kname"
         fi
 
-        local parent_disk="$pkname"
+        local parent_disk; parent_disk=$(_resolve_root_disk "$pkname")
         local status_emoji="${smart_statuses[$parent_disk]}"
 
         echo -e "│ $(printf "%-15s" "$output_label") Status: $status_emoji %: ${bar_color}[${bar_text}]${usage_percent}%${no_col} ($(printf "%s" "$total_size"))"
-    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL 2>/dev/null | grep -E 'sd[a-z][0-9]|nvme' || echo "")
+    done < <(lsblk -n -o KNAME,PKNAME,MOUNTPOINT,LABEL,TYPE 2>/dev/null | awk '$5 ~ /^(part|lvm|crypt|raid[0-9]*|mpath)$/{print $1,$2,$3,$4}' || echo "")
     echo "╰─────────────────────────────────────────────────────╯"
 }
 
@@ -436,7 +473,7 @@ display_simple_report() {
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating simple report"
     declare -A smart_statuses
-    local physical_drives=$(lsblk -d -n -o KNAME 2>/dev/null | grep -E 'sd[a-z]|nvme' || echo "")
+    local physical_drives=$(lsblk -d -n -o KNAME,TYPE 2>/dev/null | awk '$2=="disk"{print $1}' || echo "")
     if [ -z "$physical_drives" ]; then
         log_message "ERROR" "No drives found"
         echo -e "${yellow}No drives found${no_col}"
@@ -449,7 +486,8 @@ display_simple_report() {
 
     while read -r kname pkname label; do
         if [[ "$kname" =~ [0-9]$ ]] && [ -n "$pkname" ]; then
-            local status="${smart_statuses[$pkname]}"
+            local root_disk; root_disk=$(_resolve_root_disk "$pkname")
+            local status="${smart_statuses[$root_disk]}"
             local output_label=""
             if [ -n "$label" ]; then
                 output_label="$label"
@@ -458,7 +496,7 @@ display_simple_report() {
             fi
             echo "$output_label=$status"
         fi
-    done < <(lsblk -n -o KNAME,PKNAME,LABEL 2>/dev/null | grep -E 'sd[a-z][0-9]|nvme' || echo "")
+    done < <(lsblk -n -o KNAME,PKNAME,LABEL,TYPE 2>/dev/null | awk '$4 ~ /^(part|lvm|crypt|raid[0-9]*|mpath)$/{print $1,$2,$3}' || echo "")
 }
 
 display_single_device_full() {
@@ -466,7 +504,13 @@ display_single_device_full() {
     local MOUNTPOINT=$2
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating full report for single device $PARTITION_PATH"
-    local parent_disk=$(lsblk -n -o PKNAME "$PARTITION_PATH" 2>/dev/null | xargs)
+    local dev_type; dev_type=$(lsblk -n -o TYPE "$PARTITION_PATH" 2>/dev/null | xargs)
+    if [ "$dev_type" = "disk" ]; then
+        log_message "ERROR" "'$PARTITION_PATH' is a whole disk, not a partition"
+        echo -e "${yellow}'$PARTITION_PATH' is a whole disk — pass a partition or logical volume path instead.${no_col}"
+        return 1
+    fi
+    local parent_disk=$(_resolve_root_disk "$PARTITION_PATH")
     if [ -z "$parent_disk" ]; then
         log_message "ERROR" "No parent disk found for $PARTITION_PATH"
         echo -e "${yellow}No parent disk found for $PARTITION_PATH${no_col}"
@@ -510,7 +554,13 @@ display_single_device_simple() {
     local PARTITION_PATH=$1
     check_disk_space || { log_message "ERROR" "Disk space check failed, skipping report"; echo -e "${yellow}Drive info unavailable${no_col}"; return 1; }
     log_message "INFO" "Generating simple report for single device $PARTITION_PATH"
-    local parent_disk=$(lsblk -n -o PKNAME "$PARTITION_PATH" 2>/dev/null | xargs)
+    local dev_type; dev_type=$(lsblk -n -o TYPE "$PARTITION_PATH" 2>/dev/null | xargs)
+    if [ "$dev_type" = "disk" ]; then
+        log_message "ERROR" "'$PARTITION_PATH' is a whole disk, not a partition"
+        echo -e "${yellow}'$PARTITION_PATH' is a whole disk — pass a partition or logical volume path instead.${no_col}"
+        return 1
+    fi
+    local parent_disk=$(_resolve_root_disk "$PARTITION_PATH")
     if [ -z "$parent_disk" ]; then
         log_message "ERROR" "No parent disk found for $PARTITION_PATH"
         echo -e "${yellow}No parent disk found for $PARTITION_PATH${no_col}"
