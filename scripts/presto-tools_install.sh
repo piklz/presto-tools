@@ -73,6 +73,25 @@ is_command() {
   command -v "${check_command}" >/dev/null 2>&1
 }
 
+# --- Disk space guard. presto-tools itself is tiny, but a stalled/partial
+# clone on a nearly-full SD card is a worse failure mode than just refusing
+# up front. 50MB is generous headroom for this repo's size.
+check_disk_space() {
+  local required_mb="${1:-50}"
+  local path="${2:-$USER_HOME}"
+  local free
+  free=$(df -m "$path" 2>/dev/null | awk 'NR==2{print $4}')
+  if [[ -z "$free" || ! "$free" =~ ^[0-9]+$ ]]; then
+    log_message "WARNING" "Could not determine free space at $path — continuing anyway."
+    return 0
+  fi
+  if (( free < required_mb )); then
+    log_message "ERROR" "Only ${free}MB free at ${path} — need at least ${required_mb}MB. Aborting."
+    exit 1
+  fi
+  log_message "DEBUG" "Disk OK: ${free}MB free at $path"
+}
+
 # --- Logging function using systemd-cat
 log_message() {
   local log_level="$1"
@@ -121,14 +140,16 @@ This script installs and configures presto-tools on your system.
 Options:
  --help       Show this help message and exit.
  --verbose      Enable verbose output for debugging.
- --interactive, -i  Interactive mode. Prompt before overwriting existing files.
+ --interactive, -i  Interactive mode. Prompt before overwriting existing files,
+             and before cloning/updating presto-tools itself.
 
 The script performs the following actions:
-1. Clones or updates the presto-tools git repository.
-2. Ensures required scripts are executable.
-3. Adds the presto_bashwelcome.sh script to your ~/.bashrc file.
-4. Adds a check for a ~/.bash_aliases file to your ~/.bashrc.
-5. Installs bash completion for presto_drive_status.sh.
+1. Checks available disk space before cloning/updating.
+2. Clones or updates the presto-tools git repository.
+3. Ensures required scripts are executable.
+4. Adds the presto_bashwelcome.sh script to your ~/.bashrc file.
+5. Adds a check for a ~/.bash_aliases file to your ~/.bashrc.
+6. Installs bash completion for presto_drive_status.sh.
 
 To view journal logs for this script, use:
  journalctl -t presto-tools_install -n 10
@@ -161,6 +182,26 @@ for arg in "$@"; do
   esac
   shift
 done
+
+# --- Disk space guard — always runs, cheap, never blocks a piped install
+check_disk_space 50 "$USER_HOME"
+
+# --- Opt-in confirmation before touching anything. Gated behind
+# --interactive: the README's documented `curl | bash` one-liner has no
+# real stdin (it's the piped script), so a blocking prompt there would just
+# hang forever. Interactive installs (cloned + run manually) get asked.
+if [ "$INTERACTIVE" = True ]; then
+  if is_command whiptail; then
+    if ! whiptail --title "presto-tools install" --yesno \
+      "Install/update presto-tools now?\n\nThis will clone or update:\n  ${INSTALL_DIR}\n\nand may modify:\n  ~/.bashrc\n  ~/.bash_aliases\n  ~/.bash_completion.d/" \
+      15 70; then
+      log_message "INFO" "Installation cancelled by user."
+      exit 0
+    fi
+  else
+    log_message "WARNING" "whiptail not found — skipping confirmation prompt, proceeding."
+  fi
+fi
 
 # Check if the presto-tools directory exists
 if [ ! -d "$INSTALL_DIR" ]; then
