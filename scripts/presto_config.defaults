@@ -19,6 +19,6 @@ CHECK_DISK_SPACE=1
 WEATHER_LOCATION="London"
 
 #presto_drive_status
-SMART_DEVICE_TYPES="ata,scsi,sat,usbsg"
+SMART_DEVICE_TYPES="ata,scsi,sat,usbsg,nvme"
 
 DEFAULT_OUTPUT_MODE="simple_full"
