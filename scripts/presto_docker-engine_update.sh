@@ -49,6 +49,140 @@ yellow="\e[33m"
 no_col="\e[0m"
 
 # -------------------------------------------------------
+# MATRIX REVEAL
+# Scrambles "$1" with half-width katakana + symbol noise, then
+# sweeps a reveal line left → right over "$2" seconds until the
+# real text is fully shown. Half-width katakana is single-column
+# in virtually every UTF-8 terminal (unlike full-width CJK, which
+# is double-width and breaks alignment), so this stays authentic
+# without wrecking the printf spacing. Manual-mode flourish only
+# — never call this in --check mode, it's a blocking animation.
+#
+#   matrix_reveal "presto engine check" 3
+# -------------------------------------------------------
+matrix_reveal() {
+    local text="$1"
+    local duration="${2:-3}"
+    local fps=20
+    # Half-width katakana (single-column) + a few ASCII glyphs for
+    # variety. Falls back gracefully to '?' glyphs on non-UTF-8
+    # locales/consoles, but never breaks column alignment.
+    local charset='ｦｱｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜﾝ!@#$%^&*<>?01'
+    local charset_len=${#charset}
+    local len=${#text}
+    local total_frames=$(( duration * fps ))
+    local frame_delay
+    frame_delay=$(awk -v f="$fps" 'BEGIN{printf "%f", 1/f}')
+
+    tput civis 2>/dev/null
+
+    local frame
+    for (( frame=0; frame<=total_frames; frame++ )); do
+        local progress
+        progress=$(awk -v f="$frame" -v tf="$total_frames" -v l="$len" \
+            'BEGIN{printf "%d", (f/tf)*l}')
+
+        local out="" i ch r
+        for (( i=0; i<len; i++ )); do
+            ch="${text:i:1}"
+            if [[ "$ch" == " " ]]; then
+                out+=" "
+            elif (( i < progress )); then
+                out+="$ch"
+            else
+                r=$(( RANDOM % charset_len ))
+                out+="${charset:r:1}"
+            fi
+        done
+
+        printf "\r${green}%s${no_col}" "$out"
+        sleep "$frame_delay"
+    done
+
+    printf "\r${green}%s${no_col}\n" "$text"
+    tput cnorm 2>/dev/null
+}
+
+# -------------------------------------------------------
+# MATRIX REVEAL — CONCURRENT VARIANT
+# Same left-to-right katakana sweep, but runs it WHILE a real
+# command executes in the background instead of as a fixed-length
+# intro. The sweep itself always takes ~1.5s; if the command is
+# still running once fully revealed, the last frame just holds
+# until the command finishes. Captures stdout in $SPINNER_STDOUT
+# exactly like run_with_spinner, so it's a drop-in replacement.
+#
+#   matrix_reveal_while "presto engine check" sudo apt-get update -qq
+#   result="$SPINNER_STDOUT"
+# -------------------------------------------------------
+matrix_reveal_while() {
+    local text="$1"; shift
+    local outfile errfile
+    outfile=$(mktemp)
+    errfile=$(mktemp)
+
+    "$@" >"$outfile" 2>"$errfile" &
+    local pid=$!
+
+    local fps=20
+    local sweep_seconds=1.5
+    local sweep_frames
+    sweep_frames=$(awk -v s="$sweep_seconds" -v f="$fps" 'BEGIN{printf "%d", s*f}')
+    local charset='ｦｱｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜﾝ!@#$%^&*<>?01'
+    local charset_len=${#charset}
+    local len=${#text}
+    local frame_delay
+    frame_delay=$(awk -v f="$fps" 'BEGIN{printf "%f", 1/f}')
+
+    tput civis 2>/dev/null
+
+    local frame=0
+    while kill -0 "$pid" 2>/dev/null; do
+        local progress
+        if (( frame < sweep_frames )); then
+            progress=$(awk -v f="$frame" -v tf="$sweep_frames" -v l="$len" \
+                'BEGIN{printf "%d", (f/tf)*l}')
+        else
+            progress=$len   # sweep finished, hold fully-revealed text while task keeps running
+        fi
+
+        local out="" i ch r
+        for (( i=0; i<len; i++ )); do
+            ch="${text:i:1}"
+            if [[ "$ch" == " " ]]; then
+                out+=" "
+            elif (( i < progress )); then
+                out+="$ch"
+            else
+                r=$(( RANDOM % charset_len ))
+                out+="${charset:r:1}"
+            fi
+        done
+
+        printf "\r${green}%s${no_col}" "$out"
+        sleep "$frame_delay"
+        (( frame++ ))
+    done
+
+    wait "$pid"
+    local status=$?
+
+    tput cnorm 2>/dev/null
+    printf "\r\033[K"
+
+    if [[ $status -eq 0 ]]; then
+        printf "${green}✅ %s${no_col}\n" "$text"
+    else
+        printf "${red}❌ %s${no_col}\n" "$text"
+        [[ -s "$errfile" ]] && sed 's/^/   /' "$errfile" >&2
+    fi
+
+    SPINNER_STDOUT=$(<"$outfile")
+    rm -f "$outfile" "$errfile"
+    return $status
+}
+
+# -------------------------------------------------------
 # ARGS
 # -------------------------------------------------------
 MODE="${1:-}"
@@ -374,7 +508,7 @@ fi
 #  instead of a static message that just gets wiped.
 # ═══════════════════════════════════════════════════════
 
-run_with_spinner "Synchronising with package repositories..." sudo apt-get update -qq
+matrix_reveal_while "presto engine check" sudo apt-get update -qq
 
 run_with_spinner "Checking Docker Engine upstream version..." \
     fetch_latest_github_tag "moby/moby" "$DOCKER_VER_FILE" "$DOCKER_ETAG_FILE"
