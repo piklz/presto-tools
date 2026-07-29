@@ -136,6 +136,9 @@ matrix_reveal_while() {
 
     tput civis 2>/dev/null
 
+    local spinner_frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local spinner_len=${#spinner_frames}
+
     local frame=0
     while kill -0 "$pid" 2>/dev/null; do
         local progress
@@ -143,7 +146,7 @@ matrix_reveal_while() {
             progress=$(awk -v f="$frame" -v tf="$sweep_frames" -v l="$len" \
                 'BEGIN{printf "%d", (f/tf)*l}')
         else
-            progress=$len   # sweep finished, hold fully-revealed text while task keeps running
+            progress=$len   # sweep finished, but keep animating below
         fi
 
         local out="" i ch r
@@ -159,7 +162,13 @@ matrix_reveal_while() {
             fi
         done
 
-        printf "\r${green}%s${no_col}" "$out"
+        # Once the sweep is done, tack on a spinning glyph so there's
+        # still visible motion for however long the real task takes.
+        if (( frame >= sweep_frames )); then
+            out+=" ${spinner_frames:frame%spinner_len:1}"
+        fi
+
+        printf "\r${green}%s${no_col}\033[K" "$out"
         sleep "$frame_delay"
         (( frame++ ))
     done
