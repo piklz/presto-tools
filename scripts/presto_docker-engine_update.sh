@@ -12,10 +12,16 @@
 
 #######################################################  TOOLS  #########################################################
 # Description: Docker engine / compose version checker and updater via apt manager
-# Version: 1.2.0
-# Last Updated: 11/04/2026
+# Version: 1.3.0
+# Last Updated: 29/07/2026
 #
 # Changelog:
+#  - v1.3.0 - 29/07/2026  : Added run_with_spinner() animated spinner for manual-mode tasks
+#             (apt sync, upstream version checks, installs). Fixed dependency pre-check
+#             running "sudo apt install" synchronously even in --check/login mode. Fixed
+#             apt --simulate upgrade being run without sudo (was silently returning empty
+#             results on some systems). Background sudo apt update now uses "sudo -n" so a
+#             missing passwordless-sudo rule fails fast instead of hanging an orphaned job.
 #  - v1.2.0 - 11/04/2026  : Introduced TTL-based offline-first caching for --check (login) mode.
 #             Cache is read instantly from disk; stale cache triggers a fully detached background
 #             refresh so login never blocks on network. apt update and apt simulate are also
@@ -31,7 +37,6 @@ set -uo pipefail
 # -------------------------------------------------------
 # CUSTOMISING UPDATE CHECK FREQUENCY
 # -------------------------------------------------------
-# How many hours before a background cache refresh is triggered on login.
 CACHE_MAX_AGE_HOURS=6
 
 # -------------------------------------------------------
@@ -61,14 +66,6 @@ fi
 
 # -------------------------------------------------------
 # CACHE LAYOUT
-#   $CACHE_DIR/
-#     docker_version      — last known upstream Docker Engine version
-#     docker_etag         — GitHub ETag for conditional GET
-#     compose_version     — last known upstream Compose version
-#     compose_etag
-#     apt_pkg_alerts      — pending security package names (from apt simulate)
-#     last_network_sync   — timestamp touched after a successful GitHub fetch
-#     last_apt_sync       — timestamp touched after apt update + simulate
 # -------------------------------------------------------
 CACHE_DIR="${XDG_CACHE_HOME:-$USER_HOME/.cache}/presto"
 mkdir -p "$CACHE_DIR"
@@ -82,10 +79,61 @@ LAST_NET_SYNC="$CACHE_DIR/last_network_sync"
 LAST_APT_SYNC="$CACHE_DIR/last_apt_sync"
 
 # -------------------------------------------------------
+# SPINNER
+# Runs a command (function or plain binary) in the background,
+# animates a braille spinner next to a label while it runs, then
+# replaces the line with a check or cross. Command's stdout is
+# captured in $SPINNER_STDOUT so callers can still consume return
+# values (e.g. a fetched version string) as if they'd called it
+# directly and command-substituted the result.
+#
+#   run_with_spinner "Checking Docker upstream..." fetch_latest_github_tag "moby/moby" "$DOCKER_VER_FILE" "$DOCKER_ETAG_FILE"
+#   LATEST_DOCKER="$SPINNER_STDOUT"
+#
+# On failure, stderr is echoed (indented) below the ❌ line and the
+# function returns the wrapped command's exit status.
+# -------------------------------------------------------
+run_with_spinner() {
+    local label="$1"; shift
+    local outfile errfile
+    outfile=$(mktemp)
+    errfile=$(mktemp)
+
+    "$@" >"$outfile" 2>"$errfile" &
+    local pid=$!
+
+    local frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+    local nframes=${#frames}
+
+    tput civis 2>/dev/null
+
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r${yellow}%s${no_col} %s" "${frames:i++%nframes:1}" "$label"
+        sleep 0.1
+    done
+
+    wait "$pid"
+    local status=$?
+
+    tput cnorm 2>/dev/null
+    printf "\r\033[K"
+
+    if [[ $status -eq 0 ]]; then
+        printf "${green}✅ %s${no_col}\n" "$label"
+    else
+        printf "${red}❌ %s${no_col}\n" "$label"
+        [[ -s "$errfile" ]] && sed 's/^/   /' "$errfile" >&2
+    fi
+
+    SPINNER_STDOUT=$(<"$outfile")
+    rm -f "$outfile" "$errfile"
+    return $status
+}
+
+# -------------------------------------------------------
 # HELPERS
 # -------------------------------------------------------
-
-# Seconds since a file was last modified (huge number if file absent)
 cache_age_seconds() {
     local file="$1"
     if [[ -f "$file" ]]; then
@@ -95,7 +143,6 @@ cache_age_seconds() {
     fi
 }
 
-# Returns 0 (true) if the cache file is younger than max_age_hours
 cache_is_fresh() {
     local file="$1"
     local max_hours="${2:-$CACHE_MAX_AGE_HOURS}"
@@ -108,7 +155,6 @@ sanitise_version() {
     echo "${1:-}" | sed 's/^docker-//' | sed 's/^[vV]//' | sed 's/[-+].*//'
 }
 
-# Prints: newer | older | equal
 compare_versions() {
     awk -v current="$1" -v latest="$2" '
     function clean(ver,   arr, i, out) {
@@ -143,18 +189,22 @@ fetch_latest_github_tag() {
     local etag_args=()
     [[ -f "$etag_file" ]] && etag_args=(-H "If-None-Match: $(cat "$etag_file")")
 
-    local http_output http_code body
+    # -D- dumps response headers to stdout ahead of the body, so we can grab
+    # the ETag from the SAME response instead of firing a second request.
+    local http_output http_code headers body
     http_output=$(curl -sfL --max-time 10 \
         -H "Accept: application/vnd.github+json" \
         "${etag_args[@]}" \
+        -D- \
         -w "\n__HTTP_CODE__:%{http_code}" \
         "$url" 2>/dev/null) || {
         [[ -f "$ver_file" ]] && { cat "$ver_file"; return 0; }
         return 1
     }
 
-    http_code=$(echo "$http_output" | grep '__HTTP_CODE__:' | cut -d: -f2)
-    body=$(echo "$http_output" | grep -v '__HTTP_CODE__:')
+    http_code=$(echo "$http_output" | grep '__HTTP_CODE__:' | tail -n1 | cut -d: -f2)
+    headers=$(echo "$http_output" | sed -n '1,/^\r\?$/p')
+    body=$(echo "$http_output" | sed -n '/^\r\?$/,$p' | grep -v '__HTTP_CODE__:')
 
     if [[ "$http_code" == "304" ]]; then
         touch "$LAST_NET_SYNC"
@@ -173,10 +223,8 @@ fetch_latest_github_tag() {
     tag=$(echo "$body" | grep '"tag_name":' | cut -d'"' -f4)
     [[ -z "$tag" ]] && { echo -e "${red}❌ Could not parse tag_name for $repo${no_col}" >&2; return 1; }
 
-    # Grab ETag via a cheap headers-only request
     local new_etag
-    new_etag=$(curl -sIL --max-time 8 -H "Accept: application/vnd.github+json" "$url" 2>/dev/null \
-        | grep -i '^etag:' | awk '{print $2}' | tr -d '\r') || true
+    new_etag=$(echo "$headers" | grep -i '^etag:' | awk '{print $2}' | tr -d '\r')
     [[ -n "$new_etag" ]] && echo "$new_etag" > "$etag_file"
 
     local version
@@ -188,14 +236,10 @@ fetch_latest_github_tag() {
 
 # -------------------------------------------------------
 # BACKGROUND REFRESH
-# Spawns a fully detached subshell (setsid) so login doesn't wait.
-# Updates GitHub version cache AND apt alerts cache.
-# Output goes to a rotating log file, never the terminal.
 # -------------------------------------------------------
 spawn_background_refresh() {
     local log="$CACHE_DIR/bg_refresh.log"
 
-    # Export everything the subshell needs by inlining function bodies and vars
     setsid bash <<BGSCRIPT >>"$log" 2>&1 &
 set -uo pipefail
 
@@ -217,30 +261,42 @@ echo "[$(date)] Starting background refresh"
 fetch_latest_github_tag "moby/moby"        "\$DOCKER_VER_FILE"  "\$DOCKER_ETAG_FILE"  >/dev/null
 fetch_latest_github_tag "docker/compose" "\$COMPOSE_VER_FILE" "\$COMPOSE_ETAG_FILE" >/dev/null
 
-sudo apt update -qq 2>/dev/null
-apt --simulate upgrade 2>/dev/null \
-    | grep -E '^Inst (libssl|openssl|libtiff|libc6|ca-certificates|libseccomp2)' \
-    | awk '{print \$2}' > "\$APT_ALERTS_FILE"
-touch "\$LAST_APT_SYNC"
+# -n = non-interactive: fail fast instead of hanging an orphaned
+# detached process if passwordless sudo isn't configured for apt.
+if sudo -n true 2>/dev/null; then
+    sudo -n apt update -qq 2>/dev/null
+    sudo -n apt --simulate upgrade 2>/dev/null \
+        | grep -E '^Inst (libssl|openssl|libtiff|libc6|ca-certificates|libseccomp2)' \
+        | awk '{print \$2}' > "\$APT_ALERTS_FILE"
+    touch "\$LAST_APT_SYNC"
+else
+    echo "[$(date)] Skipping apt refresh: passwordless sudo not available"
+fi
 
 echo "[$(date)] Background refresh complete"
 BGSCRIPT
 
     disown $! 2>/dev/null || true
 
-    # Keep the log from growing forever (keep last 40 lines)
     if [[ -f "$log" ]] && (( $(wc -l < "$log") > 40 )); then
         tail -40 "$log" > "${log}.tmp" && mv "${log}.tmp" "$log"
     fi
 }
 
 # -------------------------------------------------------
-# DEPENDENCY PRE-CHECK  (silent in --check mode)
+# DEPENDENCY PRE-CHECK
+# In --check (login) mode we must NEVER run a blocking "sudo apt
+# install" — that was the old bug. If a dep is missing on login we
+# just skip silently (the tool degrades gracefully) and let manual
+# mode install it later.
 # -------------------------------------------------------
 for pkg in curl grep awk; do
     if ! command -v "$pkg" &>/dev/null; then
-        [[ "$MODE" != "--check" ]] && echo -e "${yellow}📦 Installing missing dependency: $pkg${no_col}"
-        sudo apt install -y "$pkg" >/dev/null 2>&1
+        if [[ "$MODE" == "--check" ]]; then
+            # Silent skip — do not block login on an install.
+            continue
+        fi
+        run_with_spinner "Installing missing dependency: $pkg" sudo apt install -y "$pkg"
     fi
 done
 
@@ -254,7 +310,7 @@ fi
 
 CURRENT_DOCKER_RAW=$(docker version --format '{{.Server.Version}}' 2>/dev/null || true)
 if [[ -z "$CURRENT_DOCKER_RAW" ]]; then
-    [[ "$MODE" == "--check" ]] && exit 0   # Silent skip on login
+    [[ "$MODE" == "--check" ]] && exit 0
     echo -e "${red}❌ Cannot reach Docker daemon. Try: sudo systemctl start docker${no_col}"
     exit 1
 fi
@@ -270,18 +326,13 @@ CURRENT_COMPOSE=$(sanitise_version "${CURRENT_COMPOSE_RAW:-0.0.0}")
 
 # ═══════════════════════════════════════════════════════
 #  LOGIN / QUIET MODE  (--check)
-#
-#  Zero blocking work — read from disk only.
-#  If cache is stale, fire a background refresh for next time.
 # ═══════════════════════════════════════════════════════
 if [[ "$MODE" == "--check" ]]; then
 
-    # Trigger background refresh if stale (non-blocking — login doesn't wait)
     if ! cache_is_fresh "$LAST_NET_SYNC"; then
         spawn_background_refresh
     fi
 
-    # No cache yet (very first run) — background job just fired, nothing to show
     if [[ ! -f "$DOCKER_VER_FILE" || ! -f "$COMPOSE_VER_FILE" ]]; then
         exit 0
     fi
@@ -306,7 +357,6 @@ if [[ "$MODE" == "--check" ]]; then
     [[ "$UPDATE_AVAILABLE" -eq 1 ]] && \
         echo -e "${blue}👉 Run ${yellow}presto_engine_update${blue} to apply.${no_col}"
 
-    # Show any pending security alerts from cached apt simulate output
     if [[ -f "$APT_ALERTS_FILE" ]]; then
         CORE_DEPS=$(cat "$APT_ALERTS_FILE")
         [[ -n "$CORE_DEPS" ]] && \
@@ -320,26 +370,27 @@ fi
 # ═══════════════════════════════════════════════════════
 #  MANUAL / INTERACTIVE MODE  (no flag)
 #  Always fetches live. Full output. Yes/no prompts.
+#  Every network/apt step now shows an animated spinner
+#  instead of a static message that just gets wiped.
 # ═══════════════════════════════════════════════════════
 
-echo -ne "${yellow}🔄 Synchronising with package repositories...${no_col}"
-sudo apt-get update -qq 2>/dev/null
-echo -ne "\r\033[K"
+run_with_spinner "Synchronising with package repositories..." sudo apt-get update -qq
 
-echo -ne "${yellow}🔍 Checking upstream versions...${no_col}"
-
-LATEST_DOCKER=$(fetch_latest_github_tag "moby/moby" \
-    "$DOCKER_VER_FILE" "$DOCKER_ETAG_FILE") || {
-    echo -e "\n${red}❌ Failed to retrieve Docker Engine upstream version.${no_col}"
+run_with_spinner "Checking Docker Engine upstream version..." \
+    fetch_latest_github_tag "moby/moby" "$DOCKER_VER_FILE" "$DOCKER_ETAG_FILE"
+if [[ $? -ne 0 ]]; then
+    echo -e "${red}❌ Failed to retrieve Docker Engine upstream version.${no_col}"
     exit 1
-}
-LATEST_COMPOSE=$(fetch_latest_github_tag "docker/compose" \
-    "$COMPOSE_VER_FILE" "$COMPOSE_ETAG_FILE") || {
-    echo -e "\n${red}❌ Failed to retrieve Docker Compose upstream version.${no_col}"
-    exit 1
-}
+fi
+LATEST_DOCKER="$SPINNER_STDOUT"
 
-echo -ne "\r\033[K"
+run_with_spinner "Checking Docker Compose upstream version..." \
+    fetch_latest_github_tag "docker/compose" "$COMPOSE_VER_FILE" "$COMPOSE_ETAG_FILE"
+if [[ $? -ne 0 ]]; then
+    echo -e "${red}❌ Failed to retrieve Docker Compose upstream version.${no_col}"
+    exit 1
+fi
+LATEST_COMPOSE="$SPINNER_STDOUT"
 
 DOCKER_UPDATE=$(compare_versions  "$CURRENT_DOCKER"  "$LATEST_DOCKER")
 COMPOSE_UPDATE=$(compare_versions "$CURRENT_COMPOSE" "$LATEST_COMPOSE")
@@ -363,23 +414,16 @@ if [[ "$UPDATE_NEEDED" -eq 1 ]]; then
         echo -e "${red}🚫 Update cancelled.${no_col}"
     else
         if [[ "$COMPOSE_UPDATE" == "newer" ]]; then
-            echo -e "${yellow}🔄 Updating Docker Compose to v${LATEST_COMPOSE}...${no_col}"
-            sudo apt install -y docker-compose-plugin \
-                && echo -e "${green}✅ Docker Compose updated.${no_col}" \
-                || echo -e "${red}❌ Docker Compose update failed.${no_col}"
+            run_with_spinner "Updating Docker Compose to v${LATEST_COMPOSE}..." \
+                sudo apt install -y docker-compose-plugin
         fi
 
         if [[ "$DOCKER_UPDATE" == "newer" ]]; then
-            echo -e "${yellow}🔄 Updating Docker Engine & Containerd...${no_col}"
-            sudo apt install -y docker-ce docker-ce-cli containerd.io \
-                && echo -e "${green}✅ Docker Engine updated.${no_col}" \
-                || echo -e "${red}❌ Docker Engine update failed.${no_col}"
-            
-            echo -e "${yellow}🔄 Restarting Docker service...${no_col}"
-            sudo systemctl restart docker \
-                && echo -e "${green}✅ Docker service restarted.${no_col}"
+            run_with_spinner "Updating Docker Engine & Containerd..." \
+                sudo apt install -y docker-ce docker-ce-cli containerd.io
+            run_with_spinner "Restarting Docker service..." \
+                sudo systemctl restart docker
         fi
-        # Bust cache so next login reflects the freshly installed versions
         rm -f "$DOCKER_VER_FILE" "$COMPOSE_VER_FILE" \
               "$DOCKER_ETAG_FILE" "$COMPOSE_ETAG_FILE" \
               "$LAST_NET_SYNC"
@@ -388,12 +432,13 @@ else
     echo -e "${green}✅ Docker Engine (v${CURRENT_DOCKER}) and Docker Compose (v${CURRENT_COMPOSE}) are up to date. 🐋${no_col}"
 fi
 
-# ---- Live security / SSL library check ----
-CORE_DEPS=$(apt --simulate upgrade 2>/dev/null \
+# ---- Live security / SSL library check (now correctly run with sudo) ----
+run_with_spinner "Checking system security libraries..." \
+    sudo apt --simulate upgrade
+CORE_DEPS=$(echo "$SPINNER_STDOUT" \
     | grep -E '^Inst (libssl|openssl|libtiff|libc6|ca-certificates|libseccomp2)' \
     | awk '{print $2}')
 
-# Persist result so --check can use it without running apt-simulate itself
 echo "$CORE_DEPS" > "$APT_ALERTS_FILE"
 touch "$LAST_APT_SYNC"
 
