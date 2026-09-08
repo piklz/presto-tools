@@ -576,7 +576,30 @@ trap 'log_message "ERROR" "Error occurred at line $LINENO: exit code $?"' ERR
 
 
 # SYSTEM INFO VARIABLES FETCHING
-cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "0")
+read_soc_temperature() {
+    local thermal_zone thermal_type temperature
+
+    for thermal_zone in /sys/class/thermal/thermal_zone*; do
+        [ -r "$thermal_zone/temp" ] || continue
+        thermal_type=$(cat "$thermal_zone/type" 2>/dev/null)
+        case "$thermal_type" in
+            cpu-thermal|soc-thermal|cpu_thermal|soc_thermal)
+                temperature=$(cat "$thermal_zone/temp" 2>/dev/null)
+                [[ "$temperature" =~ ^[0-9]+$ ]] && { printf '%s\n' "$temperature"; return 0; }
+                ;;
+        esac
+    done
+
+    for thermal_zone in /sys/class/thermal/thermal_zone*; do
+        [ -r "$thermal_zone/temp" ] || continue
+        temperature=$(cat "$thermal_zone/temp" 2>/dev/null)
+        [[ "$temperature" =~ ^[0-9]+$ ]] && { printf '%s\n' "$temperature"; return 0; }
+    done
+
+    printf '0\n'
+}
+
+cpu_temp=$(read_soc_temperature)
 gpu_temp=""
 if is_command vcgencmd; then
     gpu_temp=$(vcgencmd measure_temp 2>/dev/null | awk -F= '
