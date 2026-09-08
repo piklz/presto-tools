@@ -649,14 +649,13 @@ city=$(echo "$geo_raw" | grep -oP '"city":\s*"\K[^"]+' || echo "Unknown")
 country=$(echo "$geo_raw" | grep -oP '"country_iso":\s*"\K[^"]+' || echo "XX")
 
 #FETCH EXTERNAL IPs
-ip4=$(curl -s -4 --connect-timeout 2 https://ifconfig.me || echo "N/A")
-ip6=$(curl -s -6 --connect-timeout 2 https://ifconfig.me || echo "")
+ip4=$(curl -fsS -4 --connect-timeout 2 https://ifconfig.me 2>/dev/null || echo "N/A")
+ip6=$(curl -fsS -6 --connect-timeout 2 https://ifconfig.me 2>/dev/null || echo "")
 
 #OUTPUT
-if [[ -z "$ip6" ]]; then
-    external_ip="[IPv4] $ip4"
-else
-    external_ip="[IPv4] $ip4 / [IPv6] $ip6"
+external_ip_table=$(printf '  [IPv4] | %s\n' "${ip4:-N/A}")
+if [[ -n "$ip6" ]]; then
+    external_ip_table+=$(printf '  [IPv6] | %s\n' "$ip6")
 fi
 
 timezone=$(timedatectl 2>/dev/null | grep "Time zone" | awk '{print $3$4$5}' || echo "UTC")
@@ -756,8 +755,15 @@ else
         printf "   %-12s %s\n" "$label" "${address# }"
     done <<< "$network_ip_table"
 fi
-printf "  %-3s ${magenta_dim}%-13s${no_col} ${magenta}%s${no_col}\n" \
-    "${globe}" "External IP:" "$external_ip"
+printf "  %-3s ${magenta_dim}%-13s${no_col}\n" "${globe}" "External IP:"
+if is_command column; then
+    printf '%s' "$external_ip_table" | column -t -s '|' | sed 's/^/   /'
+else
+    while IFS='|' read -r label address; do
+        [ -n "$label" ] || continue
+        printf "   %-12s %s\n" "$label" "${address# }"
+    done <<< "$external_ip_table"
+fi
 printf " %-3s %-13s ${magenta_dim}[%s - %s, %s]${no_col}\n" \
     "" "" "${isp:-Unknown}" "${city:-Unknown}" "${country:-XX}"
 printf "  %-3s ${yellow}%-15s${no_col} ${yellow}%s\n" "${clock}" "Uptime┐" "$uptime"
