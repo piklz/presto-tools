@@ -668,7 +668,8 @@ ip6=$(curl -fsS -6 --connect-timeout 2 https://ifconfig.me 2>/dev/null || echo "
 #OUTPUT
 external_ip_table=$(printf '[IPv4] | %s\n' "${ip4:-N/A}")
 if [[ -n "$ip6" ]]; then
-    external_ip_table+=$(printf '[IPv6] | %s\n' "$ip6")
+    external_ip_table+=$'\n'
+    external_ip_table+="[IPv6] | $ip6"
 fi
 
 timezone=$(timedatectl 2>/dev/null | grep "Time zone" | awk '{print $3$4$5}' || echo "UTC")
