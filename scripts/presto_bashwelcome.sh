@@ -576,23 +576,69 @@ trap 'log_message "ERROR" "Error occurred at line $LINENO: exit code $?"' ERR
 
 
 # SYSTEM INFO VARIABLES FETCHING
-cpu_temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "0")
-gpu_temp=$(vcgencmd measure_temp 2>/dev/null | awk '{split($0,numbers,"=")} {print numbers[2]}' || echo "N/A")
-internal_ip=$(ip -o -4 addr show | awk '
-    $2 != "lo" && $2 !~ /veth/ {
-        name=$2;
-        if (name ~ /docker/) name="docker";
-        if (name ~ /br-/) name="bridge";
-        if (name ~ /eth|enp|eno|end/) name="local";
-        if (name ~ /wlan|wlp/) name="wifi";
-        if (name ~ /wg/) name="wireguard";
-        if (name ~ /tailscale/) name="tailscale";
-        split($4, ip, "/");
-        printf "[%s] %s | ", name, ip[1]
-    }' | sed 's/ | $//')
+read_soc_temperature() {
+    local thermal_zone thermal_type temperature
 
-gw=$(ip route | grep default | awk '{print $3}' | head -n 1)
-internal_ip="${internal_ip:-N/A} | [gw] ${gw:-N/A}"
+    for thermal_zone in /sys/class/thermal/thermal_zone*; do
+        [ -r "$thermal_zone/temp" ] || continue
+        thermal_type=$(cat "$thermal_zone/type" 2>/dev/null)
+        case "$thermal_type" in
+            cpu-thermal|soc-thermal|cpu_thermal|soc_thermal)
+                temperature=$(cat "$thermal_zone/temp" 2>/dev/null)
+                [[ "$temperature" =~ ^[0-9]+$ ]] && { printf '%s\n' "$temperature"; return 0; }
+                ;;
+        esac
+    done
+
+    for thermal_zone in /sys/class/thermal/thermal_zone*; do
+        [ -r "$thermal_zone/temp" ] || continue
+        temperature=$(cat "$thermal_zone/temp" 2>/dev/null)
+        [[ "$temperature" =~ ^[0-9]+$ ]] && { printf '%s\n' "$temperature"; return 0; }
+    done
+
+    printf '0\n'
+}
+
+cpu_temp=$(read_soc_temperature)
+gpu_temp=""
+if is_command vcgencmd; then
+    gpu_temp=$(vcgencmd measure_temp 2>/dev/null | awk -F= '
+        $2 != "" {
+            value=$2
+            gsub(/[^0-9.]/, "", value)
+            if (value != "") {
+                print value "°C"
+                exit
+            }
+        }')
+fi
+if [ -z "$gpu_temp" ] && [[ "$cpu_temp" =~ ^[0-9]+$ ]] && [ "$cpu_temp" -gt 0 ]; then
+    gpu_temp=$(awk -v millidegrees="$cpu_temp" 'BEGIN { printf "%.1f°C (SoC)", millidegrees / 1000 }')
+fi
+gpu_temp="${gpu_temp:-N/A}"
+network_ip_table=""
+if is_command ip; then
+    network_ip_table=$(ip -o -4 addr show 2>/dev/null | awk '
+        $2 == "lo" || $2 ~ /^veth/ { next }
+        {
+            name=$2
+            if (name ~ /^tailscale/) name="tailscale"
+            else if (name ~ /^docker/) name="docker"
+            else if (name ~ /^br-/) name="bridge"
+            else if (name ~ /^(eth|enp|eno|end|wlan|wlp)/) name="local"
+            else if (name ~ /^wg/) name="wireguard"
+            split($4, address, "/")
+            print "  [" name "] | " address[1]
+        }')
+    gw=$(ip route 2>/dev/null | awk '$1 == "default" { print $3; exit }')
+else
+    gw=""
+fi
+
+network_ip_table="${network_ip_table:-[local] | N/A}"
+printf -v gateway_row '  [gateway] | %s' "${gw:-N/A}"
+network_ip_table="${network_ip_table}
+${gateway_row}"
 
 #FETCH EXTERNAL DATA (Using the HTTPS source that worked)
 geo_raw=$(curl -s --connect-timeout 2 https://ifconfig.co/json | tr -d '\n' )
@@ -693,16 +739,23 @@ fi
 
 if [[ "$((cpu_temp/1000))" -lt 50 ]]; then 
     printf "  %-3s ${cyan}%-13s${no_col} ${green}%d°C\n" "${laptop}" "CPU Temp:" "$((cpu_temp/1000))"
-    printf "  %-3s ${cyan}%-13s${no_col} ${green}%s\n" "${gpu}" "GPU Temp:" "$gpu_temp"
+    printf "  %-3s ${cyan}%-13s${no_col} ${green}%s\n" "${gpu}" "GPU/SoC Temp:" "$gpu_temp"
 elif [[ "$((cpu_temp/1000))" -lt 62 ]]; then
     printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%d°C\n" "${laptop}" "CPU Temp:" "$((cpu_temp/1000))"
-    printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n" "${gpu}" "GPU Temp:" "$gpu_temp"
+    printf "  %-3s ${cyan}%-13s${no_col} ${yellow}%s\n" "${gpu}" "GPU/SoC Temp:" "$gpu_temp"
 else
     printf "  %-3s ${cyan}%-13s${no_col} ${red}%d°C\n" "${laptop}" "CPU Temp:" "$((cpu_temp/1000))"
-    printf "  %-3s ${cyan}%-13s${no_col} ${red}%s\n" "${gpu}" "GPU Temp:" "$gpu_temp"
+    printf "  %-3s ${cyan}%-13s${no_col} ${red}%s\n" "${gpu}" "GPU/SoC Temp:" "$gpu_temp"
 fi
 
-printf "  %-3s ${blue}%-13s${no_col} ${cyan}%s${no_col}\n" "${house}" "Internal IP:" "$internal_ip"
+printf "  %-3s ${blue}%-13s${no_col}\n" "${house}" "Network IPs:"
+if is_command column; then
+    printf '%s\n' "$network_ip_table" | column -t -s '|' | sed 's/^/   /'
+else
+    while IFS='|' read -r label address; do
+        printf "   %-12s %s\n" "$label" "${address# }"
+    done <<< "$network_ip_table"
+fi
 printf "  %-3s ${magenta_dim}%-13s${no_col} ${magenta}%s${no_col}\n" \
     "${globe}" "External IP:" "$external_ip"
 printf " %-3s %-13s ${magenta_dim}[%s - %s, %s]${no_col}\n" \
