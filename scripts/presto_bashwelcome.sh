@@ -216,6 +216,19 @@ is_command() {
     command -v "${check_command}" >/dev/null 2>&1
 }
 
+# Render network rows with one shared address column.
+render_ip_table() {
+    local table_data="$1"
+    local label address
+
+    while IFS='|' read -r label address; do
+        [ -n "$label" ] || continue
+        label="${label#${label%%[![:space:]]*}}"
+        address="${address#${address%%[![:space:]]*}}"
+        printf "     %-15s %s\n" "$label" "$address"
+    done <<< "$table_data"
+}
+
 # Logging function using systemd-cat
 log_message() {
     local log_level="$1"
@@ -628,7 +641,7 @@ if is_command ip; then
             else if (name ~ /^(eth|enp|eno|end|wlan|wlp)/) name="local"
             else if (name ~ /^wg/) name="wireguard"
             split($4, address, "/")
-            print "  [" name "] | " address[1]
+            print "[" name "] | " address[1]
         }')
     gw=$(ip route 2>/dev/null | awk '$1 == "default" { print $3; exit }')
 else
@@ -636,7 +649,7 @@ else
 fi
 
 network_ip_table="${network_ip_table:-[local] | N/A}"
-printf -v gateway_row '  [gateway] | %s' "${gw:-N/A}"
+printf -v gateway_row '[gateway] | %s' "${gw:-N/A}"
 network_ip_table="${network_ip_table}
 ${gateway_row}"
 
@@ -653,9 +666,9 @@ ip4=$(curl -fsS -4 --connect-timeout 2 https://ifconfig.me 2>/dev/null || echo "
 ip6=$(curl -fsS -6 --connect-timeout 2 https://ifconfig.me 2>/dev/null || echo "")
 
 #OUTPUT
-external_ip_table=$(printf '  [IPv4] | %s\n' "${ip4:-N/A}")
+external_ip_table=$(printf '[IPv4] | %s\n' "${ip4:-N/A}")
 if [[ -n "$ip6" ]]; then
-    external_ip_table+=$(printf '  [IPv6] | %s\n' "$ip6")
+    external_ip_table+=$(printf '[IPv6] | %s\n' "$ip6")
 fi
 
 timezone=$(timedatectl 2>/dev/null | grep "Time zone" | awk '{print $3$4$5}' || echo "UTC")
@@ -748,22 +761,9 @@ else
 fi
 
 printf "  %-3s ${blue}%-13s${no_col}\n" "${house}" "Network IPs:"
-if is_command column; then
-    printf '%s\n' "$network_ip_table" | column -t -s '|' | sed 's/^/   /'
-else
-    while IFS='|' read -r label address; do
-        printf "   %-12s %s\n" "$label" "${address# }"
-    done <<< "$network_ip_table"
-fi
+render_ip_table "$network_ip_table"
 printf "  %-3s ${magenta_dim}%-13s${no_col}\n" "${globe}" "External IP:"
-if is_command column; then
-    printf '%s' "$external_ip_table" | column -t -s '|' | sed 's/^/   /'
-else
-    while IFS='|' read -r label address; do
-        [ -n "$label" ] || continue
-        printf "   %-12s %s\n" "$label" "${address# }"
-    done <<< "$external_ip_table"
-fi
+render_ip_table "$external_ip_table"
 printf " %-3s %-13s ${magenta_dim}[%s - %s, %s]${no_col}\n" \
     "" "" "${isp:-Unknown}" "${city:-Unknown}" "${country:-XX}"
 printf "  %-3s ${yellow}%-15s${no_col} ${yellow}%s\n" "${clock}" "Uptime┐" "$uptime"
